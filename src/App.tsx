@@ -1,122 +1,79 @@
-import { useState } from 'react'
-import heroImg from './assets/hero.png'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
+import { useEffect, useRef, useState } from 'react'
+import { Link, NavLink, Route, Routes, useLocation, useParams } from 'react-router-dom'
+import { news, type NewsItem } from './data/news'
 import './App.css'
 
-function App() {
-  const [count, setCount] = useState(0)
+const board = [
+  { name: 'Mirosław Wyłupek', role: 'Prezes', image: '/images/board/miroslaw-wylupek-prezes.webp' },
+  { name: 'Przemysław Szczuka', role: 'Łowczy', image: '/images/board/przemyslaw-szczuka-lowczy.webp' },
+  { name: 'Paweł Trubaj', role: 'Skarbnik', image: '/images/board/pawel-trubaj-skarbnik.webp' },
+  { name: 'Adam Szalak', role: 'Sekretarz', image: '/images/board/adam-szalak-sekretarz.webp' },
+]
+const activities = [
+  ['Edukacja przyrodnicza', 'Dzielimy się wiedzą o lesie, zwierzętach i roli odpowiedzialnej gospodarki łowieckiej.'],
+  ['Ochrona upraw', 'Współpracujemy z rolnikami i prowadzimy działania ograniczające szkody w uprawach.'],
+  ['Gospodarka łowiecka', 'Dbamy o równowagę przyrodniczą w obwodach łowieckich nr 186 i 203.'],
+  ['Urządzenia i zaplecze', 'Utrzymujemy urządzenia łowieckie oraz wspólny majątek w należytym stanie.'],
+  ['Tradycja i integracja', 'Kultywujemy kulturę łowiecką i wzmacniamy więzi lokalnej społeczności.'],
+]
 
-  return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.tsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
-      </section>
-
-      <div className="ticks"></div>
-
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
-
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
-  )
+function Icon({ name }: { name: 'menu' | 'close' | 'arrow' | 'mail' | 'pin' | 'chevron' }) {
+  const paths = { menu: <path d="M4 7h16M4 12h16M4 17h16"/>, close: <path d="m6 6 12 12M18 6 6 18"/>, arrow: <path d="M5 12h14M13 6l6 6-6 6"/>, mail: <><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></>, pin: <><path d="M20 10c0 5-8 11-8 11S4 15 4 10a8 8 0 1 1 16 0Z"/><circle cx="12" cy="10" r="2"/></>, chevron: <path d="m9 18 6-6-6-6"/> }
+  return <svg className="icon" viewBox="0 0 24 24" aria-hidden="true">{paths[name]}</svg>
 }
 
-export default App
+function Layout() {
+  const [open, setOpen] = useState(false)
+  const location = useLocation()
+  useEffect(() => { window.scrollTo(0, 0) }, [location.pathname])
+  const links = [['/', 'Start'], ['/o-kole', 'O kole'], ['/aktualnosci', 'Aktualności'], ['/zarzad', 'Zarząd'], ['/dzialalnosc', 'Działalność'], ['/galeria', 'Galeria'], ['/kontakt', 'Kontakt']]
+  return <>
+    <a className="skip-link" href="#main">Przejdź do treści</a>
+    <header className="site-header"><div className="container header-inner">
+      <Link className="brand" to="/" aria-label="Nemrod – strona główna"><img src="/images/brand/logo-nemrod.png" alt="" width="64" height="64"/><span><strong>Nemrod</strong><small>Koło Łowieckie nr 40 w Krzczonowie</small></span></Link>
+      <button className="menu-toggle" type="button" aria-expanded={open} aria-controls="main-nav" onClick={() => setOpen(!open)}><Icon name={open ? 'close' : 'menu'}/><span className="sr-only">{open ? 'Zamknij menu' : 'Otwórz menu'}</span></button>
+      <nav id="main-nav" className={open ? 'nav open' : 'nav'} aria-label="Główna nawigacja">{links.map(([to, label]) => <NavLink key={to} to={to} end={to === '/'} onClick={() => setOpen(false)}>{label}</NavLink>)}<Link className="button button-small" to="/strefa-czlonka" onClick={() => setOpen(false)}>Strefa członka</Link></nav>
+    </div></header>
+    <main id="main"><Routes><Route path="/" element={<Home/>}/><Route path="/o-kole" element={<About/>}/><Route path="/aktualnosci" element={<NewsList/>}/><Route path="/aktualnosci/:slug" element={<NewsDetail/>}/><Route path="/zarzad" element={<BoardPage/>}/><Route path="/dzialalnosc" element={<ActivitiesPage/>}/><Route path="/galeria" element={<GalleryPage/>}/><Route path="/kontakt" element={<Contact/>}/><Route path="/strefa-czlonka" element={<MemberZone/>}/><Route path="*" element={<NotFound/>}/></Routes></main>
+    <Footer/>
+  </>
+}
+
+function SectionHead({ eyebrow, title, text }: { eyebrow: string; title: string; text?: string }) { return <div className="section-head"><span className="eyebrow">{eyebrow}</span><h2>{title}</h2>{text && <p>{text}</p>}</div> }
+function PageHero({ eyebrow, title, text }: { eyebrow: string; title: string; text: string }) { return <section className="page-hero"><div className="container"><span className="eyebrow">{eyebrow}</span><h1>{title}</h1><p>{text}</p></div></section> }
+
+function Home() { return <>
+  <section className="hero"><div className="hero-pattern"/><div className="container hero-grid"><div className="hero-copy"><span className="eyebrow light">Koło Łowieckie nr 40 „Nemrod”</span><h1>Tradycja, przyroda i odpowiedzialność od 1952 roku</h1><p>Łączymy szacunek dla polskiej tradycji łowieckiej z troską o przyrodę, edukacją i odpowiedzialnym gospodarowaniem w obwodach 186 i 203.</p><div className="actions"><Link className="button" to="/o-kole">Poznaj nasze koło <Icon name="arrow"/></Link><Link className="text-link light-link" to="/aktualnosci">Aktualności <Icon name="arrow"/></Link></div></div><div className="hero-mark"><img src="/images/brand/logo-nemrod.png" alt="Oficjalne logo Koła Łowieckiego Nemrod" width="420" height="420"/></div></div></section>
+  <section className="facts"><div className="container facts-grid"><div><strong>1952</strong><span>rok założenia</span></div><div><strong>186 i 203</strong><span>obwody łowieckie</span></div><div><strong>Krzczonów</strong><span>siedziba Koła</span></div><div><strong>Wspólna troska</strong><span>edukacja, przyroda i gospodarka</span></div></div></section>
+  <section className="section cream"><div className="container split"><div><SectionHead eyebrow="O naszym kole" title="Dziedzictwo, które zobowiązuje"/><p>Od ponad siedmiu dekad budujemy wspólnotę opartą na kulturze łowieckiej, odpowiedzialności i szacunku do natury. Współpracujemy ze środowiskiem lokalnym, prowadzimy edukację przyrodniczą i dbamy o zrównoważoną gospodarkę łowiecką.</p><Link className="text-link" to="/o-kole">Więcej o kole <Icon name="arrow"/></Link></div><img className="feature-image" src="/images/events/ognisko-edukacyjne/ognisko-02.webp" alt="Spotkanie edukacyjne Koła Nemrod w plenerze" loading="lazy"/></div></section>
+  <section className="section"><div className="container"><SectionHead eyebrow="Z życia Koła" title="Najnowsze aktualności" text="Wydarzenia, wspólne inicjatywy i codzienna praca na rzecz przyrody oraz lokalnej społeczności."/><div className="cards">{news.slice(0,3).map((item) => <NewsCard key={item.slug} item={item}/>)}</div><div className="center"><Link className="button outline" to="/aktualnosci">Wszystkie aktualności</Link></div></div></section>
+  <section className="section forest"><div className="container"><SectionHead eyebrow="Nasza działalność" title="Odpowiedzialność w praktyce"/><div className="activity-grid">{activities.map(([title, text], i) => <article key={title}><span>0{i+1}</span><h3>{title}</h3><p>{text}</p></article>)}</div><Link className="text-link light-link" to="/dzialalnosc">Poznaj nasze działania <Icon name="arrow"/></Link></div></section>
+  <section className="section cream"><div className="container"><SectionHead eyebrow="Zarząd Koła" title="Ludzie odpowiedzialni za wspólne działania"/><BoardGrid/><div className="center"><Link className="text-link" to="/zarzad">Pełny skład zarządu <Icon name="arrow"/></Link></div></div></section>
+  <VideoSection/><ContactBand/>
+  </> }
+
+function NewsCard({ item }: { item: NewsItem }) { return <article className="news-card"><Link to={`/aktualnosci/${item.slug}`}><div className="card-image"><img src={item.image} alt={item.imageAlt} loading="lazy"/></div><div className="card-body"><div className="meta"><span>{item.category}</span><time>{item.date}</time></div><h3>{item.title}</h3><p>{item.lead}</p><span className="text-link">Czytaj więcej <Icon name="arrow"/></span></div></Link></article> }
+function BoardGrid() { return <div className="board-grid">{board.map((person) => <article className="person" key={person.name}><img src={person.image} alt={`${person.name}, ${person.role} Koła`} loading="lazy"/><div><span>{person.role}</span><h3>{person.name}</h3></div></article>)}</div> }
+function About() { return <><PageHero eyebrow="O kole" title="Ponad 70 lat wspólnej tradycji" text="Koło Łowieckie nr 40 „Nemrod” w Krzczonowie działa od 1952 roku, łącząc pokolenia wokół troski o przyrodę i lokalną wspólnotę."/><section className="section"><div className="container prose-grid"><div><h2>Zakotwiczeni w regionie</h2><p>Prowadzimy działalność w obwodach łowieckich nr 186 i 203. Naszą siedzibą jest Krzczonów – miejsce, z którym wiążą nas praca, odpowiedzialność i wieloletnia współpraca ze środowiskiem lokalnym.</p><p>Tradycję rozumiemy jako zobowiązanie: do rozważnego gospodarowania, ochrony przyrody, rzetelnej edukacji i dbania o wspólny majątek.</p></div><aside className="quote"><img src="/images/brand/logo-pzl-dekoracyjne.png" alt="Dekoracyjny znak PZŁ"/><p>Szacunek dla przyrody, odpowiedzialność za wspólne dobro i żywa kultura łowiecka.</p></aside></div></section><ContactBand/></> }
+function NewsList() { return <><PageHero eyebrow="Aktualności" title="Z życia Koła Nemrod" text="Relacje z wydarzeń, przedsięwzięć edukacyjnych i prac prowadzonych przez członków Koła."/><section className="section"><div className="container cards">{news.map((item) => <NewsCard key={item.slug} item={item}/>)}</div></section></> }
+function NewsDetail() { const { slug } = useParams(); const item = news.find((entry) => entry.slug === slug); if (!item) return <NotFound/>; return <article><PageHero eyebrow={`${item.category} · ${item.date}`} title={item.title} text={item.lead}/><section className="section"><div className="container article"><img className="article-cover" src={item.image} alt={item.imageAlt}/><p>{item.description}</p>{item.video && <video className="video" controls preload="metadata"><source src={item.video} type="video/mp4"/>Twoja przeglądarka nie obsługuje filmu.</video>}{item.gallery.length > 0 && <><h2>Galeria</h2><Gallery images={item.gallery}/></>}</div></section></article> }
+function BoardPage() { return <><PageHero eyebrow="Zarząd" title="Zarząd Koła" text="Osoby pełniące funkcje w Zarządzie Koła Łowieckiego nr 40 „Nemrod” w Krzczonowie."/><section className="section cream"><div className="container"><BoardGrid/></div></section></> }
+
+const deviceImages = [1,2,3,4].flatMap((n) => ([{ src: `/images/devices/ambona-33/ambona-33-0${n}.webp`, alt: `Ambona nr 33 – ujęcie ${n}` }, { src: `/images/devices/ambona-34/ambona-34-0${n}.webp`, alt: `Ambona nr 34 – ujęcie ${n}` }]))
+function ActivitiesPage() { return <><PageHero eyebrow="Działalność" title="Działamy dla przyrody i wspólnoty" text="Codzienna praca Koła obejmuje edukację, gospodarkę łowiecką, ochronę upraw, utrzymanie zaplecza i kultywowanie tradycji."/><section className="section"><div className="container activity-list">{activities.map(([title,text],i) => <article key={title}><span>0{i+1}</span><div><h2>{title}</h2><p>{text}</p></div></article>)}</div></section><section className="section cream"><div className="container"><SectionHead eyebrow="Urządzenia łowieckie" title="Inwentaryzacja urządzeń łowieckich" text="Koło prowadzi systematyczną inwentaryzację i okresową ocenę urządzeń łowieckich. Działania służą planowaniu prac, utrzymaniu właściwego stanu technicznego oraz odpowiedzialnemu gospodarowaniu wspólnym majątkiem."/><Gallery images={deviceImages}/><p className="privacy-note">Szczegółowa dokumentacja pozostaje materiałem wewnętrznym Koła i w przyszłości będzie dostępna wyłącznie w zabezpieczonej Strefie Członka.</p></div></section></> }
+
+const galleryGroups = [['Edukacja i współpraca ze szkołami', [...news[2].gallery, ...news[5].gallery]], ['Działalność gospodarcza', news[0].gallery], ['Ochrona upraw', news[3].gallery], ['Remonty i zaplecze', news[1].gallery], ['Urządzenia łowieckie', deviceImages], ['Tradycja i integracja', [{ src: '/images/brand/logo-pzl-dekoracyjne.png', alt: 'Dekoracyjny znak PZŁ symbolizujący tradycję łowiecką' }]]] as const
+function GalleryPage() { return <><PageHero eyebrow="Galeria" title="Koło w obiektywie" text="Edukacja, działalność gospodarcza, urządzenia łowieckie i chwile budujące naszą wspólnotę."/><section className="section"><div className="container gallery-groups">{galleryGroups.map(([title, images]) => <section key={title}><h2>{title}</h2><Gallery images={[...images]}/></section>)}</div></section></> }
+function Gallery({ images }: { images: { src: string; alt: string }[] }) {
+  const [selected, setSelected] = useState<number | null>(null); const closeRef = useRef<HTMLButtonElement>(null)
+  useEffect(() => { if (selected === null) return; const onKey = (event: KeyboardEvent) => { if (event.key === 'Escape') setSelected(null); if (event.key === 'ArrowRight') setSelected((selected + 1) % images.length); if (event.key === 'ArrowLeft') setSelected((selected - 1 + images.length) % images.length) }; document.body.classList.add('modal-open'); window.addEventListener('keydown', onKey); closeRef.current?.focus(); return () => { document.body.classList.remove('modal-open'); window.removeEventListener('keydown', onKey) } }, [selected, images.length])
+  return <><div className="gallery-grid">{images.map((image,index) => <button type="button" key={`${image.src}-${index}`} onClick={() => setSelected(index)} aria-label={`Powiększ: ${image.alt}`}><img src={image.src} alt={image.alt} loading="lazy"/></button>)}</div>{selected !== null && <div className="lightbox" role="dialog" aria-modal="true" aria-label="Podgląd zdjęcia" onMouseDown={(e) => { if (e.target === e.currentTarget) setSelected(null) }}><button ref={closeRef} className="lightbox-close" type="button" onClick={() => setSelected(null)} aria-label="Zamknij podgląd"><Icon name="close"/></button>{images.length > 1 && <button className="lightbox-prev" type="button" onClick={() => setSelected((selected - 1 + images.length) % images.length)} aria-label="Poprzednie zdjęcie"><Icon name="chevron"/></button>}<figure><img src={images[selected].src} alt={images[selected].alt}/><figcaption>{images[selected].alt}</figcaption></figure>{images.length > 1 && <button className="lightbox-next" type="button" onClick={() => setSelected((selected + 1) % images.length)} aria-label="Następne zdjęcie"><Icon name="chevron"/></button>}</div>}</>
+}
+function VideoSection() { return <section className="section video-section"><div className="container split"><div><SectionHead eyebrow="Tradycja i wspólnota" title="Biesiada Koła Nemrod"/><p>Spotkania integracyjne są przestrzenią podsumowania wspólnych działań, budowania więzi i kultywowania tradycji.</p></div><video className="video" controls preload="metadata"><source src="/videos/biesiada-nemrod.mp4" type="video/mp4"/>Twoja przeglądarka nie obsługuje filmu.</video></div></section> }
+function Contact() { return <><PageHero eyebrow="Kontakt" title="Skontaktuj się z nami" text="W sprawach dotyczących działalności Koła prosimy o kontakt z Sekretarzem Koła."/><section className="section"><div className="container contact-grid"><div className="contact-card"><Icon name="pin"/><h2>Siedziba</h2><address>ul. Lipniak 1<br/>Krzczonów<br/>23-110 Krzczonów</address></div><div className="contact-card"><Icon name="mail"/><h2>E-mail</h2><p><a href="mailto:kl40nemrod@wp.pl">kl40nemrod@wp.pl</a></p><small>Osoba kontaktowa: Sekretarz Koła</small></div></div></section></> }
+function ContactBand() { return <section className="contact-band"><div className="container"><div><span className="eyebrow light">Pozostańmy w kontakcie</span><h2>Masz pytanie dotyczące działalności Koła?</h2></div><a className="button cream-button" href="mailto:kl40nemrod@wp.pl"><Icon name="mail"/> Napisz do nas</a></div></section> }
+function MemberZone() { return <><PageHero eyebrow="Strefa członka" title="Bezpieczna strefa członka jest w przygotowaniu" text="Pracujemy nad rozwiązaniem, które w przyszłości zapewni członkom Koła bezpieczny dostęp do materiałów wewnętrznych."/><section className="section"><div className="container narrow"><p>Ta strona ma obecnie charakter informacyjny. Nie udostępniamy jeszcze logowania ani dokumentów wewnętrznych.</p><Link className="button outline" to="/">Wróć na stronę główną</Link></div></section></> }
+function NotFound() { return <><PageHero eyebrow="Błąd 404" title="Nie znaleziono strony" text="Adres mógł się zmienić lub strona nie istnieje."/><section className="section"><div className="container narrow"><Link className="button" to="/">Przejdź na stronę główną</Link></div></section></> }
+function Footer() { return <footer><div className="container footer-grid"><div className="footer-brand"><img src="/images/brand/logo-nemrod.png" alt=""/><div><strong>Koło Łowieckie nr 40 „Nemrod”</strong><span>w Krzczonowie</span></div></div><div><h2>Kontakt</h2><address>ul. Lipniak 1, Krzczonów<br/>23-110 Krzczonów</address><a href="mailto:kl40nemrod@wp.pl">kl40nemrod@wp.pl</a></div><div><h2>Na skróty</h2><Link to="/o-kole">O kole</Link><Link to="/aktualnosci">Aktualności</Link><Link to="/galeria">Galeria</Link><Link to="/kontakt">Kontakt</Link></div></div><div className="container copyright">© {new Date().getFullYear()} Koło Łowieckie nr 40 „Nemrod” w Krzczonowie</div></footer> }
+
+export default Layout

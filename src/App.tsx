@@ -1,6 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
-import { Link, NavLink, Route, Routes, useLocation, useParams } from 'react-router-dom'
+import { Link, Navigate, NavLink, Route, Routes, useLocation, useParams } from 'react-router-dom'
 import { news, type NewsItem } from './data/news'
+import { ProtectedRoute } from './auth/ProtectedRoute'
+import { useAuth } from './auth/useAuth'
+import { LoginPage } from './pages/LoginPage'
+import { DevicePlaceholder, DevicesPage, MemberPanel } from './pages/MemberPages'
 import './App.css'
 
 const board = [
@@ -25,6 +29,7 @@ function Icon({ name }: { name: 'menu' | 'close' | 'arrow' | 'mail' | 'pin' | 'c
 function Layout() {
   const [open, setOpen] = useState(false)
   const location = useLocation()
+  const { isActiveMember } = useAuth()
   useEffect(() => { window.scrollTo(0, 0) }, [location.pathname])
   const links = [['/', 'Start'], ['/o-kole', 'O kole'], ['/aktualnosci', 'Aktualności'], ['/zarzad', 'Zarząd'], ['/dzialalnosc', 'Działalność'], ['/galeria', 'Galeria'], ['/kontakt', 'Kontakt']]
   return <>
@@ -32,9 +37,9 @@ function Layout() {
     <header className="site-header"><div className="container header-inner">
       <Link className="brand" to="/" aria-label="Nemrod – strona główna"><img src="/images/brand/logo-nemrod.png" alt="" width="64" height="64"/><span><strong>Nemrod</strong><small>Koło Łowieckie nr 40 w Krzczonowie</small></span></Link>
       <button className="menu-toggle" type="button" aria-expanded={open} aria-controls="main-nav" onClick={() => setOpen(!open)}><Icon name={open ? 'close' : 'menu'}/><span className="sr-only">{open ? 'Zamknij menu' : 'Otwórz menu'}</span></button>
-      <nav id="main-nav" className={open ? 'nav open' : 'nav'} aria-label="Główna nawigacja">{links.map(([to, label]) => <NavLink key={to} to={to} end={to === '/'} onClick={() => setOpen(false)}>{label}</NavLink>)}<Link className="button button-small" to="/strefa-czlonka" onClick={() => setOpen(false)}>Strefa członka</Link></nav>
+      <nav id="main-nav" className={open ? 'nav open' : 'nav'} aria-label="Główna nawigacja">{links.map(([to, label]) => <NavLink key={to} to={to} end={to === '/'} onClick={() => setOpen(false)}>{label}</NavLink>)}<Link className="button button-small" to={isActiveMember ? '/panel' : '/logowanie'} onClick={() => setOpen(false)}>Strefa członkowska</Link></nav>
     </div></header>
-    <main id="main"><Routes><Route path="/" element={<Home/>}/><Route path="/o-kole" element={<About/>}/><Route path="/aktualnosci" element={<NewsList/>}/><Route path="/aktualnosci/:slug" element={<NewsDetail/>}/><Route path="/zarzad" element={<BoardPage/>}/><Route path="/dzialalnosc" element={<ActivitiesPage/>}/><Route path="/galeria" element={<GalleryPage/>}/><Route path="/kontakt" element={<Contact/>}/><Route path="/strefa-czlonka" element={<MemberZone/>}/><Route path="*" element={<NotFound/>}/></Routes></main>
+    <main id="main"><Routes><Route path="/" element={<Home/>}/><Route path="/o-kole" element={<About/>}/><Route path="/aktualnosci" element={<NewsList/>}/><Route path="/aktualnosci/:slug" element={<NewsDetail/>}/><Route path="/zarzad" element={<BoardPage/>}/><Route path="/dzialalnosc" element={<ActivitiesPage/>}/><Route path="/galeria" element={<GalleryPage/>}/><Route path="/kontakt" element={<Contact/>}/><Route path="/logowanie" element={<LoginPage/>}/><Route path="/strefa-czlonka" element={<Navigate to="/logowanie" replace/>}/><Route element={<ProtectedRoute/>}><Route path="/panel" element={<MemberPanel/>}/><Route path="/panel/urzadzenia" element={<DevicesPage/>}/><Route path="/panel/urzadzenia/:id" element={<DevicePlaceholder/>}/></Route><Route path="*" element={<NotFound/>}/></Routes></main>
     <Footer/>
   </>
 }
@@ -72,7 +77,6 @@ function Gallery({ images }: { images: { src: string; alt: string }[] }) {
 function VideoSection() { return <section className="section video-section"><div className="container split"><div><SectionHead eyebrow="Tradycja i wspólnota" title="Biesiada Koła Nemrod"/><p>Spotkania integracyjne są przestrzenią podsumowania wspólnych działań, budowania więzi i kultywowania tradycji.</p></div><video className="video" controls preload="metadata"><source src="/videos/biesiada-nemrod.mp4" type="video/mp4"/>Twoja przeglądarka nie obsługuje filmu.</video></div></section> }
 function Contact() { return <><PageHero eyebrow="Kontakt" title="Skontaktuj się z nami" text="W sprawach dotyczących działalności Koła prosimy o kontakt z Sekretarzem Koła."/><section className="section"><div className="container contact-grid"><div className="contact-card"><Icon name="pin"/><h2>Siedziba</h2><address>ul. Lipniak 1<br/>Krzczonów<br/>23-110 Krzczonów</address></div><div className="contact-card"><Icon name="mail"/><h2>E-mail</h2><p><a href="mailto:kl40nemrod@wp.pl">kl40nemrod@wp.pl</a></p><small>Osoba kontaktowa: Sekretarz Koła</small></div></div></section></> }
 function ContactBand() { return <section className="contact-band"><div className="container"><div><span className="eyebrow light">Pozostańmy w kontakcie</span><h2>Masz pytanie dotyczące działalności Koła?</h2></div><a className="button cream-button" href="mailto:kl40nemrod@wp.pl"><Icon name="mail"/> Napisz do nas</a></div></section> }
-function MemberZone() { return <><PageHero eyebrow="Strefa członka" title="Bezpieczna strefa członka jest w przygotowaniu" text="Pracujemy nad rozwiązaniem, które w przyszłości zapewni członkom Koła bezpieczny dostęp do materiałów wewnętrznych."/><section className="section"><div className="container narrow"><p>Ta strona ma obecnie charakter informacyjny. Nie udostępniamy jeszcze logowania ani dokumentów wewnętrznych.</p><Link className="button outline" to="/">Wróć na stronę główną</Link></div></section></> }
 function NotFound() { return <><PageHero eyebrow="Błąd 404" title="Nie znaleziono strony" text="Adres mógł się zmienić lub strona nie istnieje."/><section className="section"><div className="container narrow"><Link className="button" to="/">Przejdź na stronę główną</Link></div></section></> }
 function Footer() { return <footer><div className="container footer-grid"><div className="footer-brand"><img src="/images/brand/logo-nemrod.png" alt=""/><div><strong>Koło Łowieckie nr 40 „Nemrod”</strong><span>w Krzczonowie</span></div></div><div><h2>Kontakt</h2><address>ul. Lipniak 1, Krzczonów<br/>23-110 Krzczonów</address><a href="mailto:kl40nemrod@wp.pl">kl40nemrod@wp.pl</a></div><div><h2>Na skróty</h2><Link to="/o-kole">O kole</Link><Link to="/aktualnosci">Aktualności</Link><Link to="/galeria">Galeria</Link><Link to="/kontakt">Kontakt</Link></div></div><div className="container copyright">© {new Date().getFullYear()} Koło Łowieckie nr 40 „Nemrod” w Krzczonowie</div></footer> }
 

@@ -55,8 +55,11 @@ export function LoginPage() {
     try {
       await signInWithPopup(auth, provider)
       navigate(destination, { replace: true })
-    } catch (loginError) {
-      setError(getAuthErrorMessage(loginError))
+    } catch (error) {
+      console.error('Firebase Google sign-in error:', error)
+      setError(error instanceof FirebaseError
+        ? `${error.code}: ${getAuthErrorMessage(error)}`
+        : getAuthErrorMessage(error))
     } finally {
       setBusy(false)
     }

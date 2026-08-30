@@ -9,6 +9,8 @@ import {
 import { doc, getDoc } from 'firebase/firestore'
 import { auth, db } from '../lib/firebase'
 import { AuthContext, type MemberProfile } from './AuthContext'
+import { normalizeAuthorizedUserEmail } from './memberAuthorization'
+import { logAuthError } from './authLogger'
 
 const NO_ACCESS_MESSAGE = 'To konto nie ma dostępu do strefy członkowskiej. Skontaktuj się z administratorem Koła.'
 
@@ -20,7 +22,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let currentCheck = 0
-    void setPersistence(auth, browserLocalPersistence).catch(() => {
+    void setPersistence(auth, browserLocalPersistence).catch((error: unknown) => {
+      logAuthError('session_check', error)
       setAccessError('Nie udało się zachować sesji w tej przeglądarce. Spróbuj zalogować się ponownie.')
     })
 
@@ -35,7 +38,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return
       }
 
-      const email = firebaseUser.email?.trim().toLowerCase()
+      const email = firebaseUser.email ? normalizeAuthorizedUserEmail(firebaseUser.email) : null
       if (!email) {
         setAccessError(NO_ACCESS_MESSAGE)
         await signOut(auth).catch(() => undefined)

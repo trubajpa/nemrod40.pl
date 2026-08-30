@@ -9,6 +9,7 @@ import { FirebaseError } from 'firebase/app'
 import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/useAuth'
 import { getAuthErrorMessage } from '../auth/authErrors'
+import { logAuthError } from '../auth/authLogger'
 import { auth } from '../lib/firebase'
 
 type LoginLocationState = { from?: { pathname?: string; search?: string } }
@@ -40,6 +41,7 @@ export function LoginPage() {
       await signInWithEmailAndPassword(auth, email.trim(), password)
       navigate(destination, { replace: true })
     } catch (loginError) {
+      logAuthError('email_sign_in', loginError)
       setError(getAuthErrorMessage(loginError))
     } finally {
       setBusy(false)
@@ -56,10 +58,8 @@ export function LoginPage() {
       await signInWithPopup(auth, provider)
       navigate(destination, { replace: true })
     } catch (error) {
-      console.error('Firebase Google sign-in error:', error)
-      setError(error instanceof FirebaseError
-        ? `${error.code}: ${getAuthErrorMessage(error)}`
-        : getAuthErrorMessage(error))
+      logAuthError('google_sign_in', error)
+      setError(getAuthErrorMessage(error))
     } finally {
       setBusy(false)
     }
@@ -78,8 +78,9 @@ export function LoginPage() {
         setResetSent(true)
         return
       }
+      logAuthError('password_reset', resetError)
       const message = getAuthErrorMessage(resetError)
-      setError(message === 'Nieprawidłowy adres e-mail lub hasło.' ? 'Wpisz prawidłowy adres e-mail.' : message)
+      setError(message === 'Nieprawidłowy login lub hasło.' ? 'Wpisz prawidłowy adres e-mail.' : message)
     } finally {
       setBusy(false)
     }

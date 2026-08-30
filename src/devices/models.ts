@@ -1,0 +1,15 @@
+import type { GeoPoint, Timestamp } from 'firebase/firestore'
+
+export type DeviceType = 'ambona' | 'zwyzka' | 'pasnik' | 'lizawka' | 'inne'
+export type DeviceStatus = 'sprawne' | 'wymaga_naprawy' | 'wylaczone' | 'archiwalne'
+export type IssueStatus = 'zgloszona' | 'zaplanowana' | 'w_naprawie' | 'usunieta' | 'odrzucona'
+
+export interface Device { id: string; number: number; name: string; type: DeviceType; districtNumber: number | null; active: boolean; archived: boolean; location: GeoPoint; guardianUid: string | null; guardianName: string | null; status: DeviceStatus; conditionScore: number; latestInspectionAt: Timestamp | null; latestInspectionId: string | null; currentPhotoId: string | null; openIssuesCount: number; createdAt: Timestamp; createdBy: string; updatedAt: Timestamp; updatedBy: string; version: number }
+export interface Inspection { id: string; inspectionDate: Timestamp; inspectorUid: string; inspectorName: string; conditionScore: number; statusAfterInspection: DeviceStatus; description: string; recommendations: string[]; approvedForUse: boolean; nextInspectionDate: Timestamp | null; createdAt: Timestamp; createdBy: string; locked: boolean }
+export interface Issue { id: string; title: string; description: string; priority: 'niski' | 'sredni' | 'wysoki' | 'bezpieczenstwo'; status: IssueStatus; sourceType: 'inspection' | 'comment' | 'admin'; sourceId: string | null; assignedUid: string | null; assignedName: string | null; dueDate: Timestamp | null; resolvedAt: Timestamp | null; resolvedByRepairId: string | null; createdAt: Timestamp; createdBy: string; updatedAt: Timestamp; updatedBy: string }
+export interface Repair { id: string; startedAt: Timestamp | null; completedAt: Timestamp; description: string; performedBy: string[]; materials: string[]; cost: number | null; resolvedIssueIds: string[]; conditionBefore: number | null; conditionAfter: number; statusAfterRepair: DeviceStatus; verifiedByUid: string; verifiedByName: string; createdAt: Timestamp; createdBy: string }
+export interface DeviceComment { id: string; type: 'uwaga' | 'problem' | 'propozycja' | 'informacja' | 'zgloszenie_naprawy'; content: string; authorUid: string; authorName: string; createdAt: Timestamp; relatedType: 'device' | 'inspection' | 'issue' | 'repair'; relatedId: string | null; status: 'nowy' | 'przyjety' | 'zamkniety' | 'ukryty'; convertedToIssueId: string | null; moderatedAt: Timestamp | null; moderatedBy: string | null }
+export interface DeviceMedia { id: string; path: string; storageProvider: 'public' | 'firebase_storage'; category: 'aktualne' | 'przeglad' | 'usterka' | 'przed_naprawa' | 'po_naprawie'; relatedType: 'device' | 'inspection' | 'issue' | 'repair'; relatedId: string | null; capturedAt: Timestamp | null; uploadedAt: Timestamp; uploadedBy: string; isCurrent: boolean; replacedBy: string | null; caption: string | null; hidden: boolean }
+
+export type DeviceFilters = { district: string; type: string; status: string; guardian: string; needsRepair: boolean }
+export type ActivityItem = { id: string; kind: 'inspection' | 'issue' | 'repair' | 'comment' | 'media'; date: Timestamp; title: string }

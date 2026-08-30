@@ -1,0 +1,99 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function hasEmail() { return request.auth != null && request.auth.token.email is string; }
+    // Firestore Rules nie mają funkcji lowercase. E-mail w tokenie i identyfikator
+    // authorizedUsers muszą być identyczne, łącznie z wielkością liter.
+    function memberPath() { return /databases/$(database)/documents/authorizedUsers/$(request.auth.token.email); }
+    function isMember() { return hasEmail() && exists(memberPath()) && get(memberPath()).data.active == true; }
+    function member() { return get(memberPath()).data; }
+    function isAdmin() { return isMember() && member().role == 'admin'; }
+    function ownAudit(data) { return data.createdBy == request.auth.uid && data.updatedBy == request.auth.uid && data.createdAt == request.time && data.updatedAt == request.time; }
+    function validStatus(status) { return status in ['sprawne', 'wymaga_naprawy', 'wylaczone', 'archiwalne']; }
+
+    match /authorizedUsers/{email} {
+      allow read: if hasEmail() && request.auth.token.email == email;
+      allow write: if false;
+    }
+
+    match /devices/{deviceId} {
+      allow read: if isMember();
+      allow create: if isAdmin() && ownAudit(request.resource.data)
+        && request.resource.data.version == 1
+        && request.resource.data.active is bool
+        && request.resource.data.archived is bool
+        && request.resource.data.conditionScore >= 1 && request.resource.data.conditionScore <= 5
+        && validStatus(request.resource.data.status);
+      allow update: if isAdmin()
+        && request.resource.data.createdBy == resource.data.createdBy
+        && request.resource.data.createdAt == resource.data.createdAt
+        && request.resource.data.updatedBy == request.auth.uid
+        && request.resource.data.updatedAt == request.time
+        && request.resource.data.version == resource.data.version + 1
+        && validStatus(request.resource.data.status);
+      allow delete: if false;
+
+      match /comments/{commentId} {
+        allow read: if isMember();
+        allow create: if isMember()
+          && request.resource.data.keys().hasOnly(['type','content','authorUid','authorName','createdAt','relatedType','relatedId','status','convertedToIssueId','moderatedAt','moderatedBy'])
+          && request.resource.data.authorUid == request.auth.uid
+          && request.resource.data.authorName == member().displayName
+          && request.resource.data.content is string && request.resource.data.content.size() > 0
+          && request.resource.data.createdAt == request.time
+          && request.resource.data.status == 'nowy'
+          && request.resource.data.convertedToIssueId == null
+          && request.resource.data.moderatedAt == null
+          && request.resource.data.moderatedBy == null;
+        allow update: if isAdmin()
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status','convertedToIssueId','moderatedAt','moderatedBy'])
+          && request.resource.data.moderatedAt == request.time
+          && request.resource.data.moderatedBy == request.auth.uid;
+        allow delete: if false;
+      }
+
+      match /issues/{issueId} {
+        allow read: if isMember();
+        allow create: if isAdmin() && ownAudit(request.resource.data)
+          && request.resource.data.resolvedAt == null && request.resource.data.resolvedByRepairId == null;
+        allow update: if isAdmin()
+          && request.resource.data.createdBy == resource.data.createdBy
+          && request.resource.data.createdAt == resource.data.createdAt
+          && request.resource.data.updatedBy == request.auth.uid
+          && request.resource.data.updatedAt == request.time;
+        allow delete: if false;
+      }
+
+      match /inspections/{inspectionId} {
+        allow read: if isMember();
+        allow create: if isAdmin()
+          && request.resource.data.inspectorUid == request.auth.uid
+          && request.resource.data.createdBy == request.auth.uid
+          && request.resource.data.createdAt == request.time
+          && request.resource.data.locked == true;
+        allow update, delete: if false;
+      }
+
+      match /repairs/{repairId} {
+        allow read: if isMember();
+        allow create: if isAdmin()
+          && request.resource.data.createdBy == request.auth.uid
+          && request.resource.data.verifiedByUid == request.auth.uid
+          && request.resource.data.createdAt == request.time;
+        allow update, delete: if false;
+      }
+
+      match /media/{mediaId} {
+        allow read: if isMember();
+        allow create: if isAdmin()
+          && request.resource.data.uploadedBy == request.auth.uid
+          && request.resource.data.uploadedAt == request.time
+          && request.resource.data.replacedBy == null;
+        allow update: if isAdmin()
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isCurrent','replacedBy','hidden']);
+        allow delete: if false;
+      }
+    }
+    match /{document=**} { allow read, write: if false; }
+  }
+}

@@ -1,0 +1,1 @@
+export function getDevicePermissions(role: string | null, active: boolean) { const admin=active&&role==='admin'; return { canRead:active, canComment:active, canManageDevice:admin, canInspect:admin, canManageIssues:admin, canApproveRepair:admin, canManageMedia:admin, canModerateComments:admin } }

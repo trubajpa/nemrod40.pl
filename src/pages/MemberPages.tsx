@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
 import { useAuth } from '../auth/useAuth'
+export { DevicesRegistryPage as DevicesPage, DeviceDetailsPage as DevicePlaceholder } from '../devices/DeviceViews'
 
 export function MemberPanel() {
   const { user, profile, role, logout } = useAuth()
@@ -19,17 +20,4 @@ export function MemberPanel() {
       <Link className="public-back-link" to="/">← Przejdź do strony publicznej</Link>
     </div>
   </section>
-}
-
-export function DevicesPage() {
-  return <section className="member-page"><div className="container member-shell">
-    <Link className="member-brand" to="/"><img src="/images/brand/logo-nemrod-v2.png" alt=""/><span>Nemrod</span></Link>
-    <header className="member-header"><span className="eyebrow">Strefa członkowska</span><h1>Przegląd urządzeń łowieckich</h1><p>Bezpieczny obszar przeznaczony do przeglądania wewnętrznej ewidencji urządzeń Koła.</p></header>
-    <div className="empty-state"><h2>Rejestr urządzeń zostanie załadowany w kolejnym kroku</h2><p>Na tym etapie żadne dane urządzeń, lokalizacje ani informacje o usterkach nie są przechowywane w kodzie strony.</p></div>
-    <Link className="button outline" to="/panel">← Wróć do panelu</Link>
-  </div></section>
-}
-
-export function DevicePlaceholder() {
-  return <section className="member-page"><div className="container member-shell"><div className="empty-state"><h1>Szczegóły urządzenia</h1><p>Dane urządzenia zostaną pobrane z Firestore w kolejnym kroku.</p></div><Link className="button outline" to="/panel/urzadzenia">← Wróć do przeglądu</Link></div></section>
 }

@@ -8,6 +8,7 @@
     "build": "tsc -b && vite build && node scripts/create-spa-fallback.mjs",
     "lint": "eslint .",
     "test": "vitest run",
+    "test:firestore-rules": "firebase emulators:exec --project demo-nemrod40 --only firestore \"vitest run --config vitest.firestore.config.ts\"",
     "test:watch": "vitest",
     "preview": "vite preview"
   },
@@ -19,6 +20,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@firebase/rules-unit-testing": "^5.0.2",
     "@testing-library/jest-dom": "^7.0.1",
     "@testing-library/react": "^16.3.3",
     "@testing-library/user-event": "^14.6.6",
@@ -29,6 +31,7 @@
     "eslint": "^10.9.0",
     "eslint-plugin-react-hooks": "^7.1.1",
     "eslint-plugin-react-refresh": "^0.5.4",
+    "firebase-tools": "^15.28.2",
     "globals": "^17.11.0",
     "jsdom": "^30.0.1",
     "typescript": "~6.0.2",

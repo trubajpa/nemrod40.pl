@@ -9,7 +9,7 @@ import {
 import { doc, getDoc } from 'firebase/firestore'
 import { auth, db } from '../lib/firebase'
 import { AuthContext, type MemberProfile } from './AuthContext'
-import { normalizeAuthorizedUserEmail } from './memberAuthorization'
+import { isAuthorizedMemberProfile, normalizeAuthorizedUserEmail } from './memberAuthorization'
 import { logAuthError } from './authLogger'
 
 const NO_ACCESS_MESSAGE = 'To konto nie ma dostępu do strefy członkowskiej. Skontaktuj się z administratorem Koła.'
@@ -49,7 +49,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       try {
         const snapshot = await getDoc(doc(db, 'authorizedUsers', email))
         const data = snapshot.exists() ? (snapshot.data() as MemberProfile) : null
-        if (!data || data.active !== true) {
+        if (!isAuthorizedMemberProfile(data)) {
           setAccessError(NO_ACCESS_MESSAGE)
           await signOut(auth).catch(() => undefined)
           return

@@ -1,0 +1,12 @@
+import { collection, doc, increment, onSnapshot, orderBy, query, runTransaction, serverTimestamp, updateDoc } from 'firebase/firestore'
+import { db } from '../lib/firebase'
+import { issueConverter } from './converters'
+import type { Issue } from './models'
+import { logDeviceError, safeSnapshot } from './repositoryUtils'
+
+export type IssueInput=Pick<Issue,'title'|'description'|'priority'|'sourceType'|'sourceId'|'assignedUid'|'assignedName'> & {createdBy:string}
+export type IssueUpdate=Partial<Pick<Issue,'title'|'description'|'priority'|'status'|'assignedUid'|'assignedName'|'dueDate'|'resolvedAt'|'resolvedByRepairId'>>
+export function subscribeIssues(deviceId:string,onData:(x:Issue[])=>void,onError:()=>void){return onSnapshot(query(collection(db,'devices',deviceId,'issues'),orderBy('createdAt','desc')),s=>onData(safeSnapshot(s,issueConverter)),e=>{logDeviceError('list_issues',e);onError()})}
+export async function createIssue(deviceId:string,input:IssueInput){return runTransaction(db,async tx=>{const ref=doc(collection(db,'devices',deviceId,'issues'));tx.set(ref,{...input,status:'zgloszona',dueDate:null,resolvedAt:null,resolvedByRepairId:null,createdAt:serverTimestamp(),updatedAt:serverTimestamp(),updatedBy:input.createdBy});tx.update(doc(db,'devices',deviceId),{openIssuesCount:increment(1),status:'wymaga_naprawy',updatedAt:serverTimestamp(),updatedBy:input.createdBy,version:increment(1)});return ref.id})}
+export async function updateIssue(deviceId:string,issueId:string,data:IssueUpdate,uid:string){return updateDoc(doc(db,'devices',deviceId,'issues',issueId),{...data,updatedAt:serverTimestamp(),updatedBy:uid})}
+export async function convertCommentToIssue(deviceId:string,commentId:string,input:IssueInput){return runTransaction(db,async tx=>{const issueRef=doc(collection(db,'devices',deviceId,'issues'));tx.set(issueRef,{...input,sourceType:'comment',sourceId:commentId,status:'zgloszona',dueDate:null,resolvedAt:null,resolvedByRepairId:null,createdAt:serverTimestamp(),updatedAt:serverTimestamp(),updatedBy:input.createdBy});tx.update(doc(db,'devices',deviceId,'comments',commentId),{status:'przyjety',convertedToIssueId:issueRef.id,moderatedAt:serverTimestamp(),moderatedBy:input.createdBy});tx.update(doc(db,'devices',deviceId),{openIssuesCount:increment(1),status:'wymaga_naprawy',version:increment(1),updatedAt:serverTimestamp(),updatedBy:input.createdBy});return issueRef.id})}

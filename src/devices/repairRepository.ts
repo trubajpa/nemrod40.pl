@@ -1,0 +1,9 @@
+import { Timestamp, collection, doc, increment, onSnapshot, orderBy, query, runTransaction, serverTimestamp } from 'firebase/firestore'
+import { db } from '../lib/firebase'
+import { repairConverter } from './converters'
+import type { DeviceStatus, Repair } from './models'
+import { logDeviceError, safeSnapshot } from './repositoryUtils'
+export type RepairInput={startedAt:Date|null;completedAt:Date;description:string;performedBy:string[];materials:string[];cost:number|null;resolvedIssueIds:string[];conditionBefore:number|null;conditionAfter:number;statusAfterRepair:DeviceStatus;verifiedByUid:string;verifiedByName:string;createdBy:string;remainingOpenIssues:number}
+export function buildRepairResolution(issueIds:string[],repairId:string){return issueIds.map(issueId=>({issueId,repairId,status:'usunieta' as const}))}
+export function subscribeRepairs(deviceId:string,onData:(x:Repair[])=>void,onError:()=>void){return onSnapshot(query(collection(db,'devices',deviceId,'repairs'),orderBy('completedAt','desc')),s=>onData(safeSnapshot(s,repairConverter)),e=>{logDeviceError('list_repairs',e);onError()})}
+export async function addRepair(deviceId:string,input:RepairInput){return runTransaction(db,async tx=>{const ref=doc(collection(db,'devices',deviceId,'repairs'));const {remainingOpenIssues,...history}=input;tx.set(ref,{...history,startedAt:input.startedAt?Timestamp.fromDate(input.startedAt):null,completedAt:Timestamp.fromDate(input.completedAt),createdAt:serverTimestamp()});for(const issueId of input.resolvedIssueIds)tx.update(doc(db,'devices',deviceId,'issues',issueId),{status:'usunieta',resolvedByRepairId:ref.id,resolvedAt:serverTimestamp(),updatedAt:serverTimestamp(),updatedBy:input.createdBy});tx.update(doc(db,'devices',deviceId),{conditionScore:input.conditionAfter,status:input.statusAfterRepair,openIssuesCount:remainingOpenIssues,updatedAt:serverTimestamp(),updatedBy:input.createdBy,version:increment(1)});return ref.id})}

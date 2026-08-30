@@ -85,7 +85,7 @@ export function LoginPage() {
   return <section className="auth-page">
     <div className="auth-card">
       <Link className="auth-brand" to="/" aria-label="Nemrod – strona główna">
-        <img src="/images/brand/logo-nemrod.png" alt="" width="90" height="90"/>
+        <span className="auth-logo-frame"><img src="/images/brand/logo-nemrod-v2.png" alt=""/></span>
         <span><strong>Nemrod</strong><small>Koło Łowieckie nr 40 w Krzczonowie</small></span>
       </Link>
       <div className="auth-heading">
@@ -104,6 +104,7 @@ export function LoginPage() {
         <button className="text-button" type="button" disabled={busy} onClick={() => { setResetMode(false); setResetSent(false); setError(null) }}>Wróć do logowania</button>
       </form> : <>
         <button className="google-button" type="button" onClick={handleGoogleLogin} disabled={busy || loading}><span aria-hidden="true">G</span>{busy ? 'Logowanie…' : 'Zaloguj przez Google'}</button>
+        <p className="google-help">Jeśli logowanie Google nie działa, sprawdź w Firebase, czy domena nemrod40.pl i localhost są dodane do „Authorized domains”.</p>
         <div className="separator"><span>lub</span></div>
         <form className="auth-form" onSubmit={handleEmailLogin}>
           <label htmlFor="login-email">Login (adres e-mail)</label>

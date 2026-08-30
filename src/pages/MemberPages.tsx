@@ -8,7 +8,7 @@ export function MemberPanel() {
   return <section className="member-page">
     <div className="container member-shell">
       <div className="member-topbar">
-        <Link className="member-brand" to="/"><img src="/images/brand/logo-nemrod.png" alt=""/><span>Nemrod</span></Link>
+        <Link className="member-brand" to="/"><img src="/images/brand/logo-nemrod-v2.png" alt=""/><span>Nemrod</span></Link>
         <button className="button outline" type="button" onClick={() => void logout()}>Wyloguj się</button>
       </div>
       <header className="member-header"><span className="eyebrow">Panel członka</span><h1>Strefa członkowska</h1><p>Witaj, <strong>{name}</strong>.</p><span className="role-badge">Rola: {role || 'członek'}</span></header>
@@ -23,7 +23,7 @@ export function MemberPanel() {
 
 export function DevicesPage() {
   return <section className="member-page"><div className="container member-shell">
-    <Link className="member-brand" to="/"><img src="/images/brand/logo-nemrod.png" alt=""/><span>Nemrod</span></Link>
+    <Link className="member-brand" to="/"><img src="/images/brand/logo-nemrod-v2.png" alt=""/><span>Nemrod</span></Link>
     <header className="member-header"><span className="eyebrow">Strefa członkowska</span><h1>Przegląd urządzeń łowieckich</h1><p>Bezpieczny obszar przeznaczony do przeglądania wewnętrznej ewidencji urządzeń Koła.</p></header>
     <div className="empty-state"><h2>Rejestr urządzeń zostanie załadowany w kolejnym kroku</h2><p>Na tym etapie żadne dane urządzeń, lokalizacje ani informacje o usterkach nie są przechowywane w kodzie strony.</p></div>
     <Link className="button outline" to="/panel">← Wróć do panelu</Link>

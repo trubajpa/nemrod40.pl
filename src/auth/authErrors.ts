@@ -8,6 +8,10 @@ export function getAuthErrorMessage(error: unknown) {
       return 'Okno logowania Google zostało zamknięte przed ukończeniem logowania.'
     case 'auth/popup-blocked':
       return 'Przeglądarka zablokowała okno logowania Google. Zezwól na wyskakujące okna i spróbuj ponownie.'
+    case 'auth/unauthorized-domain':
+      return 'Ta domena nie jest dodana do zaufanych domen Firebase Authentication. Dodaj nemrod40.pl (oraz localhost) w ustawieniach uwierzytelniania.'
+    case 'auth/operation-not-allowed':
+      return 'Logowanie Google nie jest włączone w projekcie Firebase. Włącz metodę logowania Google w Firebase Authentication.'
     case 'auth/account-exists-with-different-credential':
       return 'Konto z tym adresem e-mail korzysta z innej metody logowania. Zaloguj się właściwą metodą.'
     case 'auth/invalid-credential':

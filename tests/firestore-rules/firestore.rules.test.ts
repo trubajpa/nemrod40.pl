@@ -33,7 +33,7 @@ const context = (user?: typeof MEMBER) =>
     : testEnv.unauthenticatedContext().firestore()
 
 const validDevice = (uid = ADMIN.uid) => ({
-  number: 40,
+  number: '40',
   name: 'Urządzenie testowe',
   type: 'inne',
   active: true,
@@ -67,7 +67,7 @@ async function seed() {
         displayName: 'Nieaktywny',
       }),
       setDoc(doc(firestore, 'devices', 'device-test'), {
-        ...validDevice(),
+        ...validDevice(), number: 40,
         createdAt: new Date('2026-01-01T00:00:00Z'),
         updatedAt: new Date('2026-01-01T00:00:00Z'),
       }),
@@ -101,6 +101,7 @@ async function seed() {
 }
 
 beforeAll(async () => {
+  if (process.env.FIRESTORE_EMULATOR_HOST !== '127.0.0.1:8080') throw new Error('Only local Firestore emulator 127.0.0.1:8080 is allowed')
   const rules = await readFile(resolve('firestore.rules'), 'utf8')
   testEnv = await initializeTestEnvironment({
     projectId: PROJECT_ID,
@@ -117,6 +118,55 @@ afterAll(async () => {
 })
 
 describe('firestore.rules w Local Emulator Suite', () => {
+  it('przyjmuje tekstowe numery, rozdziela typy i dopuszcza wszystkie półpunktowe oceny', async () => {
+    await seed()
+    for (const [type, number] of [['ambona', '31'], ['pasnik', '31'], ['ambona', '4A'], ['ambona', '4B']]) {
+      await assertSucceeds(setDoc(doc(context(ADMIN), `devices/${type}-${number.toLowerCase()}`), { ...validDevice(), type, number, conditionScore: 0, conditionLabel: '4+', inspectionDate: new Date('2026-05-09T00:00:00Z'), inventoryUpdatedAt: null }))
+    }
+    for (let score = 0; score <= 5; score += 0.5) {
+      const number = String(100 + score * 2)
+      await assertSucceeds(setDoc(doc(context(ADMIN), `devices/inne-${number}`), { ...validDevice(), number, conditionScore: score }))
+    }
+  })
+
+  it('odrzuca złe ID, brak numeru i nowe numery liczbowe', async () => {
+    await seed()
+    for (const [id, number] of [['random-id', '4A'], ['ambona-4', '4B'], ['ambona-4a', 4], ['ambona-', ''], ['ambona-unknown', 'do ustalenia']]) {
+      await assertFails(setDoc(doc(context(ADMIN), `devices/${id}`), { ...validDevice(), type: 'ambona', number }))
+    }
+  })
+
+  it('odrzuca błędną skalę, etykietę, daty i pusty audyt także przy edycji', async () => {
+    await seed()
+    const invalid = [
+      { conditionScore: -0.5 }, { conditionScore: 5.5 }, { conditionScore: 2.25 }, { conditionScore: '4+' },
+      { conditionLabel: 4 }, { conditionLabel: 'x'.repeat(81) },
+      { inspectionDate: '2026-05-09' }, { inventoryUpdatedAt: '2026-05-10' }, { updatedAt: null },
+    ]
+    for (const fields of invalid) {
+      await assertFails(setDoc(doc(context(ADMIN), 'devices/inne-41'), { ...validDevice(), number: '41', ...fields }))
+      await assertFails(updateDoc(doc(context(ADMIN), 'devices/device-test'), { updatedAt: serverTimestamp(), updatedBy: ADMIN.uid, version: increment(1), ...fields }))
+    }
+    await assertSucceeds(updateDoc(doc(context(ADMIN), 'devices/device-test'), { number: '40', conditionScore: 0.5, conditionLabel: '4+', inventoryUpdatedAt: new Date('2026-05-10T00:00:00Z'), updatedAt: serverTimestamp(), updatedBy: ADMIN.uid, version: increment(1) }))
+    await assertFails(updateDoc(doc(context(ADMIN), 'devices/device-test'), { number: '41', updatedAt: serverTimestamp(), updatedBy: ADMIN.uid, version: increment(1) }))
+    await assertFails(updateDoc(doc(context(ADMIN), 'devices/device-test'), { type: 'ambona', updatedAt: serverTimestamp(), updatedBy: ADMIN.uid, version: increment(1) }))
+  })
+
+  it('waliduje skalę i opis oceny przeglądów oraz napraw bez poluzowania autora historii', async () => {
+    await seed()
+    const db = context(ADMIN)
+    const inspection = { inspectorUid: ADMIN.uid, createdBy: ADMIN.uid, createdAt: serverTimestamp(), locked: true, inspectionDate: new Date('2026-05-09T00:00:00Z'), conditionScore: 0, conditionLabel: '4+' }
+    await assertSucceeds(setDoc(doc(db, 'devices/device-test/inspections/zero'), inspection))
+    await assertFails(setDoc(doc(db, 'devices/device-test/inspections/bad-score'), { ...inspection, conditionScore: 4.25 }))
+    await assertFails(setDoc(doc(db, 'devices/device-test/inspections/bad-author'), { ...inspection, inspectorUid: MEMBER.uid }))
+    await assertFails(setDoc(doc(db, 'devices/device-test/inspections/bad-date'), { ...inspection, inspectionDate: null }))
+    const repair = { createdBy: ADMIN.uid, verifiedByUid: ADMIN.uid, createdAt: serverTimestamp(), conditionAfter: 0.5, conditionBefore: 0, conditionLabel: '4+' }
+    await assertSucceeds(setDoc(doc(db, 'devices/device-test/repairs/half'), repair))
+    await assertFails(setDoc(doc(db, 'devices/device-test/repairs/bad-after'), { ...repair, conditionAfter: 5.5 }))
+    await assertFails(setDoc(doc(db, 'devices/device-test/repairs/bad-before'), { ...repair, conditionBefore: 0.25 }))
+    await assertFails(setDoc(doc(db, 'devices/device-test/repairs/bad-label'), { ...repair, conditionLabel: 4 }))
+  })
+
   it('odrzuca odczyt urządzeń bez logowania, dla nieaktywnego konta i przy różnej wielkości liter e-maila', async () => {
     await seed()
     await assertFails(getDoc(doc(context(), 'devices/device-test')))
@@ -193,10 +243,10 @@ describe('firestore.rules w Local Emulator Suite', () => {
 
   it('pozwala administratorowi utworzyć poprawne urządzenie, ale sprawdza status, ocenę i audyt', async () => {
     await seed()
-    await assertSucceeds(setDoc(doc(context(ADMIN), 'devices/new-device'), validDevice()))
-    await assertFails(setDoc(doc(context(ADMIN), 'devices/bad-status'), { ...validDevice(), status: 'nieznany' }))
-    await assertFails(setDoc(doc(context(ADMIN), 'devices/bad-score'), { ...validDevice(), conditionScore: 6 }))
-    await assertFails(setDoc(doc(context(ADMIN), 'devices/bad-author'), { ...validDevice(), createdBy: MEMBER.uid }))
+    await assertSucceeds(setDoc(doc(context(ADMIN), 'devices/inne-40'), validDevice()))
+    await assertFails(setDoc(doc(context(ADMIN), 'devices/inne-41'), { ...validDevice(), number: '41', status: 'nieznany' }))
+    await assertFails(setDoc(doc(context(ADMIN), 'devices/inne-42'), { ...validDevice(), number: '42', conditionScore: 6 }))
+    await assertFails(setDoc(doc(context(ADMIN), 'devices/inne-43'), { ...validDevice(), number: '43', createdBy: MEMBER.uid }))
   })
 
   it('wymaga przy aktualizacji urządzenia niezmiennego autora, czasu utworzenia i wersji +1', async () => {
@@ -228,7 +278,7 @@ describe('firestore.rules w Local Emulator Suite', () => {
     const db = context(ADMIN)
     const batch = writeBatch(db)
     batch.set(doc(db, 'devices/device-test/inspections/inspection-new'), {
-      inspectorUid: ADMIN.uid, createdBy: ADMIN.uid, createdAt: serverTimestamp(), locked: true,
+      inspectorUid: ADMIN.uid, createdBy: ADMIN.uid, createdAt: serverTimestamp(), locked: true, conditionScore: 4.5, inspectionDate: new Date('2026-05-09T00:00:00Z'),
     })
     batch.update(doc(db, 'devices/device-test'), {
       conditionScore: 4, updatedBy: ADMIN.uid, updatedAt: serverTimestamp(), version: increment(1),
@@ -241,7 +291,7 @@ describe('firestore.rules w Local Emulator Suite', () => {
     const db = context(ADMIN)
     const batch = writeBatch(db)
     batch.set(doc(db, 'devices/device-test/repairs/repair-new'), {
-      description: 'Naprawa testowa', createdBy: ADMIN.uid,
+      description: 'Naprawa testowa', conditionAfter: 4.5, createdBy: ADMIN.uid,
       verifiedByUid: ADMIN.uid, createdAt: serverTimestamp(),
     })
     batch.update(doc(db, 'devices/device-test/issues/issue-test'), {

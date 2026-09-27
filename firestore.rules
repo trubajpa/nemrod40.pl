@@ -2,14 +2,28 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     function hasEmail() { return request.auth != null && request.auth.token.email is string; }
-    // Firestore Rules nie mają funkcji lowercase. E-mail w tokenie i identyfikator
-    // authorizedUsers muszą być identyczne, łącznie z wielkością liter.
+    // E-mail w tokenie i identyfikator authorizedUsers muszą być identyczne,
+    // łącznie z wielkością liter (bez normalizacji istniejących kont).
     function memberPath() { return /databases/$(database)/documents/authorizedUsers/$(request.auth.token.email); }
     function isMember() { return hasEmail() && exists(memberPath()) && get(memberPath()).data.active == true; }
     function member() { return get(memberPath()).data; }
     function isAdmin() { return isMember() && member().role == 'admin'; }
     function ownAudit(data) { return data.createdBy == request.auth.uid && data.updatedBy == request.auth.uid && data.createdAt == request.time && data.updatedAt == request.time; }
     function validStatus(status) { return status in ['sprawne', 'wymaga_naprawy', 'wylaczone', 'archiwalne']; }
+    function validScore(score) { return score is number && score in [0, 0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5]; }
+    function validLabel(data) { return !('conditionLabel' in data) || data.conditionLabel == null || (data.conditionLabel is string && data.conditionLabel.size() <= 80); }
+    function optionalDate(data, field) { return !(field in data) || data[field] == null || data[field] is timestamp; }
+    function validInventory(data) { return validLabel(data) && optionalDate(data, 'inspectionDate') && optionalDate(data, 'inventoryUpdatedAt'); }
+    function validIdentity(data, id) {
+      return data.type in ['ambona', 'zwyzka', 'pasnik', 'lizawka', 'inne']
+        && data.number is string && data.number.matches('[0-9][A-Z0-9-]{0,31}')
+        && id == data.type + '-' + data.number.lower();
+    }
+    function sameIdentity(before, after) {
+      return after.type == before.type
+        && (after.number == before.number
+          || (before.number is number && after.number is string && after.number == string(before.number)));
+    }
 
     match /authorizedUsers/{email} {
       allow read: if hasEmail() && request.auth.token.email == email;
@@ -22,7 +36,9 @@ service cloud.firestore {
         && request.resource.data.version == 1
         && request.resource.data.active is bool
         && request.resource.data.archived is bool
-        && request.resource.data.conditionScore >= 1 && request.resource.data.conditionScore <= 5
+        && validIdentity(request.resource.data, deviceId)
+        && validScore(request.resource.data.conditionScore)
+        && validInventory(request.resource.data)
         && validStatus(request.resource.data.status);
       allow update: if isAdmin()
         && request.resource.data.createdBy == resource.data.createdBy
@@ -30,6 +46,9 @@ service cloud.firestore {
         && request.resource.data.updatedBy == request.auth.uid
         && request.resource.data.updatedAt == request.time
         && request.resource.data.version == resource.data.version + 1
+        && sameIdentity(resource.data, request.resource.data)
+        && validScore(request.resource.data.conditionScore)
+        && validInventory(request.resource.data)
         && validStatus(request.resource.data.status);
       allow delete: if false;
 
@@ -67,6 +86,9 @@ service cloud.firestore {
       match /inspections/{inspectionId} {
         allow read: if isMember();
         allow create: if isAdmin()
+          && validScore(request.resource.data.conditionScore)
+          && validLabel(request.resource.data)
+          && request.resource.data.inspectionDate is timestamp
           && request.resource.data.inspectorUid == request.auth.uid
           && request.resource.data.createdBy == request.auth.uid
           && request.resource.data.createdAt == request.time
@@ -77,6 +99,9 @@ service cloud.firestore {
       match /repairs/{repairId} {
         allow read: if isMember();
         allow create: if isAdmin()
+          && validScore(request.resource.data.conditionAfter)
+          && (request.resource.data.get('conditionBefore', null) == null || validScore(request.resource.data.conditionBefore))
+          && validLabel(request.resource.data)
           && request.resource.data.createdBy == request.auth.uid
           && request.resource.data.verifiedByUid == request.auth.uid
           && request.resource.data.createdAt == request.time;

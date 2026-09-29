@@ -1,0 +1,20 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    function member() {
+      return request.auth != null && request.auth.token.email is string
+        && firestore.exists(/databases/(default)/documents/authorizedUsers/$(request.auth.token.email))
+        && firestore.get(/databases/(default)/documents/authorizedUsers/$(request.auth.token.email)).data.active == true;
+    }
+    function admin() { return member() && firestore.get(/databases/(default)/documents/authorizedUsers/$(request.auth.token.email)).data.role == 'admin'; }
+    match /devices/{deviceId}/{file} {
+      allow read: if member();
+      allow create: if resource == null && admin() && firestore.exists(/databases/(default)/documents/devices/$(deviceId))
+        && request.resource.size > 0 && request.resource.size <= 10 * 1024 * 1024
+        && request.resource.contentType in ['image/jpeg','image/png','image/webp'];
+      // Gallery detachment never deletes or overwrites the original object.
+      allow update, delete: if false;
+    }
+    match /{allPaths=**} { allow read, write: if false; }
+  }
+}

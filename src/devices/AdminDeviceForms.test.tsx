@@ -21,17 +21,19 @@ describe('formularze inwentaryzacji', () => {
     expect(await screen.findByRole('status')).toHaveTextContent('Operacja została zapisana.')
   })
   it('edycja zachowuje daty i etykietę oraz nie zmienia tożsamości urządzenia', async () => {
-    const device = { id: 'legacy-id', number: '4B', name: 'Test', status: 'sprawne', conditionScore: 4.5, conditionLabel: '4+', location: new GeoPoint(1, 2), inspectionDate: Timestamp.fromDate(new Date(2026, 4, 9)), inventoryUpdatedAt: null } as Device
+    const device = { id: 'legacy-id', number: '4B', type:'ambona', version:1, name: 'Test', status: 'sprawne', conditionScore: 4.5, conditionLabel: '4+', location: new GeoPoint(1, 2), inspectionDate: Timestamp.fromDate(new Date(2026, 4, 9)), inventoryUpdatedAt: null } as Device
     render(<AdminDeviceForms device={device} deviceId={device.id} uid="test-admin" name="Test" issues={[]} comments={[]} currentPhotoId={null} />)
     const form = screen.getByText('Zapisz metryczkę').closest('form')!
     expect(form.querySelector('[name="score"]')).toHaveValue(4.5)
     expect(form.querySelector('[name="inspectionDate"]')).toHaveValue('2026-05-09')
     expect(form.querySelector('[name="inventoryUpdatedAt"]')).toHaveValue('')
     fireEvent.submit(form)
+    expect(updateDevice).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByText('Potwierdź zapis zmian'))
     await waitFor(() => expect(updateDevice).toHaveBeenCalled())
     const data = vi.mocked(updateDevice).mock.calls[0][1]
     expect(data).toMatchObject({ conditionScore: 4.5, conditionLabel: '4+', inventoryUpdatedAt: null })
-    expect(data).not.toHaveProperty('number')
+    expect(data.number).toBe('4B')
     expect(data).not.toHaveProperty('updatedAt')
   })
 })

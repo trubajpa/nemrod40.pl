@@ -16,14 +16,14 @@ describe('statyczny kontrakt firestore.rules', () => {
     expect(rules).toContain('request.resource.data.createdAt == request.time')
   })
   it('chroni pola komentarza podczas moderacji', () => {
-    expect(rules).toContain("affectedKeys().hasOnly(['status','convertedToIssueId','moderatedAt','moderatedBy'])")
+    expect(rules).toContain("affectedKeys().hasOnly(['status','convertedToIssueId','moderatedAt','moderatedBy','content','lastEditId'])")
   })
   it('blokuje fizyczne usuwanie i modyfikację historii', () => {
     expect(rules).toContain('allow update, delete: if false;')
     expect(rules.match(/allow delete: if false/g)?.length).toBeGreaterThanOrEqual(4)
   })
   it('chroni historyczne pola mediów', () => {
-    expect(rules).toContain("affectedKeys().hasOnly(['isCurrent','replacedBy','hidden'])")
+    expect(rules).toContain("affectedKeys().hasOnly(['isCurrent','replacedBy','hidden','photoStatus'])")
   })
   it('wymusza UID i serverTimestamp w zapisach administratora', () => {
     expect(rules).toContain('data.createdBy == request.auth.uid')

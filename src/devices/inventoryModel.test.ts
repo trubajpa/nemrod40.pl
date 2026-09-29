@@ -9,6 +9,10 @@ const base = { location: new GeoPoint(1, 1), createdAt: timestamp, updatedAt: ti
 const snapshot = (data: Record<string, unknown>) => ({ id: 'legacy-random-id', data: () => data }) as unknown as QueryDocumentSnapshot
 
 describe('zgodność modelu inwentaryzacji', () => {
+  it('zachowuje brak GPS i oceny bez wymyślania zer',()=>{
+    expect(deviceConverter.fromFirestore(snapshot({...base,location:null,conditionScore:null,description:'Opis źródłowy',rewir:null}),{})).toMatchObject({location:null,conditionScore:null,description:'Opis źródłowy',rewir:null})
+    expect(formatCondition(null,'4+')).toBe('do ustalenia (4+)')
+  })
   it('czyta stary numer liczbowy jako tekst bez zmiany ID i dat audytowych', () => {
     expect(deviceConverter.fromFirestore(snapshot(base), {})).toMatchObject({ id: 'legacy-random-id', number: '4', inspectionDate: null, inventoryUpdatedAt: null, conditionLabel: null, createdAt: timestamp, updatedAt: timestamp })
   })

@@ -8,6 +8,7 @@ import {
 } from '@firebase/rules-unit-testing'
 import {
   collection,
+  type Firestore, type DocumentData,
   deleteDoc,
   doc,
   getDoc,
@@ -25,6 +26,9 @@ const PROJECT_ID = 'demo-nemrod40'
 const MEMBER = { uid: 'member-uid', email: 'member@example.test', displayName: 'Członek testowy' }
 const ADMIN = { uid: 'admin-uid', email: 'admin@example.test', displayName: 'Administrator testowy' }
 
+async function createIndexed(db:Firestore,path:string,data:DocumentData){
+ const batch=writeBatch(db),id=path.split('/').at(-1)!;batch.set(doc(db,path),data);batch.set(doc(db,'deviceNumbers',data.type+'-'+String(data.number).toLowerCase()),{deviceId:id,type:data.type,number:data.number,updatedBy:ADMIN.uid,updatedAt:serverTimestamp()});return batch.commit()
+}
 let testEnv: RulesTestEnvironment
 
 const context = (user?: typeof MEMBER) =>
@@ -51,6 +55,7 @@ async function seed() {
   await testEnv.withSecurityRulesDisabled(async (adminContext) => {
     const firestore = adminContext.firestore()
     await Promise.all([
+      setDoc(doc(firestore,'deviceRegistry/identityIndex'),{ready:true}),
       setDoc(doc(firestore, 'authorizedUsers', MEMBER.email), {
         active: true,
         role: 'member',
@@ -118,14 +123,50 @@ afterAll(async () => {
 })
 
 describe('firestore.rules w Local Emulator Suite', () => {
+  async function rename(id:string,number:string){
+    const db=context(ADMIN),ref=doc(db,'devices',id),before=(await getDoc(ref)).data()!
+    const after={...before,number,updatedAt:serverTimestamp(),updatedBy:ADMIN.uid,version:before.version+1}
+    const batch=writeBatch(db)
+    batch.update(ref,after)
+    batch.set(doc(db,'deviceNumbers',`${before.type}-${number.toLowerCase()}`),{deviceId:id,type:before.type,number,updatedBy:ADMIN.uid,updatedAt:serverTimestamp()})
+    batch.set(doc(db,'devices',id,'edits',String(after.version)),{before,after,version:after.version,createdBy:ADMIN.uid,createdAt:serverTimestamp()})
+    return batch.commit()
+  }
+  it('renumbers a legacy random ID with immutable history and leaves child comments intact',async()=>{
+    await seed();await assertSucceeds(rename('device-test','1001'))
+    await assertSucceeds(getDoc(doc(context(MEMBER),'devices/device-test/comments/comment-test')))
+    await assertFails(updateDoc(doc(context(ADMIN),'devices/device-test/edits/2'),{before:{}}))
+  })
+  it('blocks occupied identities and concurrent claims for a single number',async()=>{
+    await seed();await createIndexed(context(ADMIN),'devices/inne-41',{...validDevice(),number:'41'})
+    await assertFails(rename('device-test','41'))
+    const results=await Promise.allSettled([rename('device-test','1002'),rename('inne-41','1002')])
+    if(results.filter(r=>r.status==='fulfilled').length!==1)throw Error('Exactly one identity claim must succeed')
+  })
+  it('blocks identity writes before trusted legacy-index readiness and blocks clients changing readiness',async()=>{
+    await seed();await testEnv.withSecurityRulesDisabled(c=>setDoc(doc(c.firestore(),'deviceRegistry/identityIndex'),{ready:false}))
+    await assertFails(rename('device-test','1003'))
+    await assertFails(setDoc(doc(context(ADMIN),'deviceRegistry/identityIndex'),{ready:true}))
+  })
+  it('admin edits comment with original content in immutable history; member cannot',async()=>{
+    await seed();const db=context(ADMIN),ref=doc(db,'devices/device-test/comments/comment-test'),batch=writeBatch(db)
+    batch.set(doc(db,'devices/device-test/comments/comment-test/edits/edit-1'),{before:'Treść',after:'Poprawiona treść',createdBy:ADMIN.uid,createdAt:serverTimestamp()})
+    batch.update(ref,{content:'Poprawiona treść',lastEditId:'edit-1',moderatedAt:serverTimestamp(),moderatedBy:ADMIN.uid})
+    await assertSucceeds(batch.commit());await assertFails(updateDoc(doc(context(MEMBER),'devices/device-test/comments/comment-test'),{content:'Podszyta zmiana'}))
+  })
+  it('admin changes photo status/detaches without file deletion; member cannot',async()=>{
+    await seed();await assertSucceeds(updateDoc(doc(context(ADMIN),'devices/device-test/media/media-old'),{photoStatus:'archiwalne',hidden:true,isCurrent:false}))
+    await assertFails(updateDoc(doc(context(MEMBER),'devices/device-test/media/media-old'),{photoStatus:'aktualne'}))
+    await assertFails(updateDoc(doc(context(ADMIN),'devices/device-test/media/media-old'),{photoStatus:'niewiadome'}))
+  })
   it('przyjmuje tekstowe numery, rozdziela typy i dopuszcza wszystkie półpunktowe oceny', async () => {
     await seed()
     for (const [type, number] of [['ambona', '31'], ['pasnik', '31'], ['ambona', '4A'], ['ambona', '4B']]) {
-      await assertSucceeds(setDoc(doc(context(ADMIN), `devices/${type}-${number.toLowerCase()}`), { ...validDevice(), type, number, conditionScore: 0, conditionLabel: '4+', inspectionDate: new Date('2026-05-09T00:00:00Z'), inventoryUpdatedAt: null }))
+      await assertSucceeds(createIndexed(context(ADMIN), `devices/${type}-${number.toLowerCase()}`, { ...validDevice(), type, number, conditionScore: 0, conditionLabel: '4+', inspectionDate: new Date('2026-05-09T00:00:00Z'), inventoryUpdatedAt: null }))
     }
     for (let score = 0; score <= 5; score += 0.5) {
       const number = String(100 + score * 2)
-      await assertSucceeds(setDoc(doc(context(ADMIN), `devices/inne-${number}`), { ...validDevice(), number, conditionScore: score }))
+      await assertSucceeds(createIndexed(context(ADMIN), `devices/inne-${number}`, { ...validDevice(), number, conditionScore: score }))
     }
   })
 
@@ -243,7 +284,7 @@ describe('firestore.rules w Local Emulator Suite', () => {
 
   it('pozwala administratorowi utworzyć poprawne urządzenie, ale sprawdza status, ocenę i audyt', async () => {
     await seed()
-    await assertSucceeds(setDoc(doc(context(ADMIN), 'devices/inne-40'), validDevice()))
+    await assertSucceeds(createIndexed(context(ADMIN), 'devices/inne-40', validDevice()))
     await assertFails(setDoc(doc(context(ADMIN), 'devices/inne-41'), { ...validDevice(), number: '41', status: 'nieznany' }))
     await assertFails(setDoc(doc(context(ADMIN), 'devices/inne-42'), { ...validDevice(), number: '42', conditionScore: 6 }))
     await assertFails(setDoc(doc(context(ADMIN), 'devices/inne-43'), { ...validDevice(), number: '43', createdBy: MEMBER.uid }))

@@ -24,6 +24,44 @@ service cloud.firestore {
         && (after.number == before.number
           || (before.number is number && after.number is string && after.number == string(before.number)));
     }
+    function identityKey(data) { return data.type + '-' + string(data.number).lower(); }
+    function reserved(data, id) {
+      // Trusted one-time legacy index audit is required before identity writes.
+      // Client rules cannot query all legacy random IDs to prove uniqueness.
+      return get(/databases/$(database)/documents/deviceRegistry/identityIndex).data.ready == true
+        && getAfter(/databases/$(database)/documents/deviceNumbers/$(identityKey(data))).data.deviceId == id;
+    }
+    function validPresentation(data) {
+      return (!('location' in data) || data.location == null || data.location is latlng)
+        && (!('rewir' in data) || data.rewir == null || data.rewir is string)
+        && (!('description' in data) || (data.description is string && data.description.size() <= 20000))
+        && (!('defects' in data) || data.defects is list)
+        && (!('recommendations' in data) || data.recommendations is list)
+        && (!('photoPaths' in data) || data.photoPaths is list)
+        && (!('numberNeedsVerification' in data) || data.numberNeedsVerification is bool);
+    }
+    function editRecorded(id, data) {
+      return getAfter(/databases/$(database)/documents/devices/$(id)/edits/$(string(data.version))).data.after == data;
+    }
+    function commentEditRecorded(deviceId, commentId, before, after) {
+      let path = /databases/$(database)/documents/devices/$(deviceId)/comments/$(commentId)/edits/$(after.lastEditId);
+      let edit = getAfter(path).data;
+      return !exists(path) && edit.before == before.content && edit.after == after.content
+        && edit.createdAt == request.time && edit.createdBy == request.auth.uid;
+    }
+
+    match /deviceNumbers/{key} {
+      allow read: if isMember();
+      allow create, update: if isAdmin()
+        && request.resource.data.keys().hasOnly(['deviceId','type','number','updatedBy','updatedAt'])
+        && validIdentity(request.resource.data,key)
+        && request.resource.data.updatedBy == request.auth.uid && request.resource.data.updatedAt == request.time
+        && (!exists(/databases/$(database)/documents/deviceNumbers/$(key)) || resource.data.deviceId == request.resource.data.deviceId)
+        && identityKey(getAfter(/databases/$(database)/documents/devices/$(request.resource.data.deviceId)).data) == key
+        && (!exists(/databases/$(database)/documents/devices/$(key)) || key == request.resource.data.deviceId || identityKey(getAfter(/databases/$(database)/documents/devices/$(key)).data) != key);
+      allow delete: if isAdmin() && identityKey(getAfter(/databases/$(database)/documents/devices/$(resource.data.deviceId)).data) != key;
+    }
+    match /deviceRegistry/{id} { allow read: if isMember(); allow write: if false; }
 
     match /authorizedUsers/{email} {
       allow read: if hasEmail() && request.auth.token.email == email;
@@ -37,7 +75,9 @@ service cloud.firestore {
         && request.resource.data.active is bool
         && request.resource.data.archived is bool
         && validIdentity(request.resource.data, deviceId)
-        && validScore(request.resource.data.conditionScore)
+        && reserved(request.resource.data,deviceId)
+        && validPresentation(request.resource.data)
+        && (request.resource.data.conditionScore == null || validScore(request.resource.data.conditionScore))
         && validInventory(request.resource.data)
         && validStatus(request.resource.data.status);
       allow update: if isAdmin()
@@ -46,11 +86,23 @@ service cloud.firestore {
         && request.resource.data.updatedBy == request.auth.uid
         && request.resource.data.updatedAt == request.time
         && request.resource.data.version == resource.data.version + 1
-        && sameIdentity(resource.data, request.resource.data)
-        && validScore(request.resource.data.conditionScore)
+        && (sameIdentity(resource.data, request.resource.data) || (validIdentity(request.resource.data, identityKey(request.resource.data)) && reserved(request.resource.data,deviceId) && editRecorded(deviceId,request.resource.data)))
+        && validPresentation(request.resource.data)
+        && (request.resource.data.conditionScore == null || validScore(request.resource.data.conditionScore))
         && validInventory(request.resource.data)
         && validStatus(request.resource.data.status);
       allow delete: if false;
+
+      match /edits/{editId} {
+        allow read: if isMember();
+        allow create: if isAdmin() && request.resource.data.createdBy == request.auth.uid
+          && request.resource.data.createdAt == request.time
+          && editId == string(request.resource.data.version)
+          && request.resource.data.before == get(/databases/$(database)/documents/devices/$(deviceId)).data
+          && request.resource.data.after == getAfter(/databases/$(database)/documents/devices/$(deviceId)).data
+          && request.resource.data.version == request.resource.data.before.version + 1;
+        allow update, delete: if false;
+      }
 
       match /comments/{commentId} {
         allow read: if isMember();
@@ -65,10 +117,19 @@ service cloud.firestore {
           && request.resource.data.moderatedAt == null
           && request.resource.data.moderatedBy == null;
         allow update: if isAdmin()
-          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status','convertedToIssueId','moderatedAt','moderatedBy'])
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status','convertedToIssueId','moderatedAt','moderatedBy','content','lastEditId'])
+          && request.resource.data.content is string && request.resource.data.content.size() > 0
+          && (request.resource.data.content == resource.data.content || commentEditRecorded(deviceId,commentId,resource.data,request.resource.data))
           && request.resource.data.moderatedAt == request.time
           && request.resource.data.moderatedBy == request.auth.uid;
         allow delete: if false;
+        match /edits/{editId} {
+          allow read: if isMember();
+          allow create: if isAdmin() && request.resource.data.createdBy == request.auth.uid && request.resource.data.createdAt == request.time
+            && request.resource.data.before == get(/databases/$(database)/documents/devices/$(deviceId)/comments/$(commentId)).data.content
+            && request.resource.data.after == getAfter(/databases/$(database)/documents/devices/$(deviceId)/comments/$(commentId)).data.content;
+          allow update, delete: if false;
+        }
       }
 
       match /issues/{issueId} {
@@ -113,9 +174,11 @@ service cloud.firestore {
         allow create: if isAdmin()
           && request.resource.data.uploadedBy == request.auth.uid
           && request.resource.data.uploadedAt == request.time
-          && request.resource.data.replacedBy == null;
+          && request.resource.data.replacedBy == null
+          && request.resource.data.get('photoStatus',null) in [null,'aktualne','archiwalne'];
         allow update: if isAdmin()
-          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isCurrent','replacedBy','hidden']);
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isCurrent','replacedBy','hidden','photoStatus'])
+          && request.resource.data.get('photoStatus',null) in [null,'aktualne','archiwalne'];
         allow delete: if false;
       }
     }

@@ -61,7 +61,7 @@ function deviceFields(input: Partial<DeviceInput>) {
             throw new Error('invalid_list');
     return {
         ...data,
-        ...(latitude !== undefined && longitude !== undefined ? { location: latitude === null && longitude === null ? null : new GeoPoint(latitude!, longitude!) } : {}),
+        ...(latitude !== undefined && longitude !== undefined ? { location: latitude === null && longitude === null ? null : new GeoPoint(latitude!, longitude!), googleMaps: latitude === null && longitude === null ? null : `https://maps.google.com/?q=${latitude},${longitude}` } : {}),
         ...(inspectionDate !== undefined ? { inspectionDate: inspectionDate ? Timestamp.fromDate(inspectionDate) : null } : {}),
         ...(inventoryUpdatedAt !== undefined ? { inventoryUpdatedAt: inventoryUpdatedAt ? Timestamp.fromDate(inventoryUpdatedAt) : null } : {}),
     };

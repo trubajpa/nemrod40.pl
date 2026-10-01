@@ -9,6 +9,7 @@
     "lint": "eslint .",
     "test": "vitest run",
     "test:firestore-rules": "firebase emulators:exec --project demo-nemrod40 --only firestore,storage \"vitest run --config vitest.firestore.config.ts\"",
+    "import:devices": "node scripts/device-import.mjs",
     "test:watch": "vitest",
     "preview": "vite preview"
   },

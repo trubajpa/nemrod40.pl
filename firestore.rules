@@ -33,6 +33,7 @@ service cloud.firestore {
     }
     function validPresentation(data) {
       return (!('location' in data) || data.location == null || data.location is latlng)
+        && (!('googleMaps' in data) || data.googleMaps == null || data.googleMaps is string)
         && (!('rewir' in data) || data.rewir == null || data.rewir is string)
         && (!('description' in data) || (data.description is string && data.description.size() <= 20000))
         && (!('defects' in data) || data.defects is list)

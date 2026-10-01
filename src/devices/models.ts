@@ -11,6 +11,7 @@ export interface Device {
     active: boolean;
     archived: boolean;
     location: GeoPoint | null;
+    googleMaps?: string | null;
     guardianUid: string | null;
     guardianName: string | null;
     status: DeviceStatus;

@@ -7,7 +7,7 @@ service firebase.storage {
         && firestore.get(/databases/(default)/documents/authorizedUsers/$(request.auth.token.email)).data.active == true;
     }
     function admin() { return member() && firestore.get(/databases/(default)/documents/authorizedUsers/$(request.auth.token.email)).data.role == 'admin'; }
-    match /devices/{deviceId}/{file} {
+    match /devices/{deviceId}/{file=**} {
       allow read: if member();
       allow create: if resource == null && admin() && firestore.exists(/databases/(default)/documents/devices/$(deviceId))
         && request.resource.size > 0 && request.resource.size <= 10 * 1024 * 1024

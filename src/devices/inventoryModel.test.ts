@@ -10,7 +10,7 @@ const snapshot = (data: Record<string, unknown>) => ({ id: 'legacy-random-id', d
 
 describe('zgodność modelu inwentaryzacji', () => {
   it('zachowuje brak GPS i oceny bez wymyślania zer',()=>{
-    expect(deviceConverter.fromFirestore(snapshot({...base,location:null,conditionScore:null,description:'Opis źródłowy',rewir:null}),{})).toMatchObject({location:null,conditionScore:null,description:'Opis źródłowy',rewir:null})
+    expect(deviceConverter.fromFirestore(snapshot({...base,location:null,googleMaps:null,conditionScore:null,description:'Opis źródłowy',rewir:null}),{})).toMatchObject({location:null,googleMaps:null,conditionScore:null,description:'Opis źródłowy',rewir:null})
     expect(formatCondition(null,'4+')).toBe('do ustalenia (4+)')
   })
   it('czyta stary numer liczbowy jako tekst bez zmiany ID i dat audytowych', () => {

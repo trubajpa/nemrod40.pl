@@ -1,7 +1,12 @@
 import type { DeviceStatus, DeviceType } from './models';
 export type ValidationErrors = Record<string, string>;
 import { deviceTypes, validDeviceNumber } from './deviceIdentity';
-const statuses: DeviceStatus[] = ['sprawne', 'wymaga_naprawy', 'wylaczone', 'archiwalne'];
+export const statuses: DeviceStatus[] = ['sprawne', 'wymaga_naprawy', 'wylaczone', 'archiwalne', 'do_ustalenia'];
+export function validateStatusApproval(status: string, approvedForUse?: boolean): ValidationErrors {
+    if (!statuses.includes(status as DeviceStatus)) return { status: 'Wybierz prawidłowy status.' };
+    if (status === 'do_ustalenia' && approvedForUse === true) return { approvedForUse: 'Status Do ustalenia nie dopuszcza do użytkowania.' };
+    return {};
+}
 export function validateScore(value: number) { return Number.isFinite(value) && Number.isInteger(value * 2) && value >= 0 && value <= 5; }
 export function validateCoordinates(latitude: number, longitude: number) { return Number.isFinite(latitude) && Number.isFinite(longitude) && latitude >= -90 && latitude <= 90 && longitude >= -180 && longitude <= 180; }
 export function validateDeviceInput(input: {
@@ -9,6 +14,7 @@ export function validateDeviceInput(input: {
     number: string;
     type: string;
     status: string;
+    approvedForUse?: boolean;
     conditionScore: number | null;
     conditionLabel?: string | null;
     inspectionDate?: Date | null;
@@ -18,7 +24,7 @@ export function validateDeviceInput(input: {
     disabledReason?: string;
     hasSafetyIssue?: boolean;
 }) {
-    const errors: ValidationErrors = { ...validateInventoryDates(input) };
+    const errors: ValidationErrors = { ...validateInventoryDates(input), ...validateStatusApproval(input.status, input.approvedForUse) };
     if (input.conditionLabel != null && input.conditionLabel.length > 80)
         errors.conditionLabel = 'Opis oceny może mieć maksymalnie 80 znaków.';
     if (!input.name.trim())

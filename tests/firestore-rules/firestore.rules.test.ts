@@ -196,7 +196,7 @@ describe('firestore.rules w Local Emulator Suite', () => {
   it('waliduje skalę i opis oceny przeglądów oraz napraw bez poluzowania autora historii', async () => {
     await seed()
     const db = context(ADMIN)
-    const inspection = { inspectorUid: ADMIN.uid, createdBy: ADMIN.uid, createdAt: serverTimestamp(), locked: true, inspectionDate: new Date('2026-05-09T00:00:00Z'), conditionScore: 0, conditionLabel: '4+' }
+    const inspection = { inspectorUid: ADMIN.uid, createdBy: ADMIN.uid, createdAt: serverTimestamp(), locked: true, statusAfterInspection: 'sprawne', approvedForUse: false, inspectionDate: new Date('2026-05-09T00:00:00Z'), conditionScore: 0, conditionLabel: '4+' }
     await assertSucceeds(setDoc(doc(db, 'devices/device-test/inspections/zero'), inspection))
     await assertFails(setDoc(doc(db, 'devices/device-test/inspections/bad-score'), { ...inspection, conditionScore: 4.25 }))
     await assertFails(setDoc(doc(db, 'devices/device-test/inspections/bad-author'), { ...inspection, inspectorUid: MEMBER.uid }))
@@ -319,7 +319,7 @@ describe('firestore.rules w Local Emulator Suite', () => {
     const db = context(ADMIN)
     const batch = writeBatch(db)
     batch.set(doc(db, 'devices/device-test/inspections/inspection-new'), {
-      inspectorUid: ADMIN.uid, createdBy: ADMIN.uid, createdAt: serverTimestamp(), locked: true, conditionScore: 4.5, inspectionDate: new Date('2026-05-09T00:00:00Z'),
+      inspectorUid: ADMIN.uid, createdBy: ADMIN.uid, createdAt: serverTimestamp(), locked: true, statusAfterInspection: 'sprawne', approvedForUse: false, conditionScore: 4.5, inspectionDate: new Date('2026-05-09T00:00:00Z'),
     })
     batch.update(doc(db, 'devices/device-test'), {
       conditionScore: 4, updatedBy: ADMIN.uid, updatedAt: serverTimestamp(), version: increment(1),
@@ -392,3 +392,25 @@ describe('firestore.rules w Local Emulator Suite', () => {
     await assertFails(setDoc(doc(context(ADMIN), 'private/secret'), { value: true }))
   })
 })
+
+describe('do_ustalenia direct Firestore rules',()=>{
+ it('allows creation and update with false approval',async()=>{
+  await seed();const db=context(ADMIN);await assertSucceeds(createIndexed(db,'devices/inne-40',{...validDevice(),status:'do_ustalenia',approvedForUse:false}));
+  await assertSucceeds(updateDoc(doc(db,'devices/inne-40'),{name:'Updated',version:2,updatedAt:serverTimestamp()}));
+ });
+ it.each([{status:'unknown',approvedForUse:false},{status:'do_ustalenia',approvedForUse:true},{status:'do_ustalenia'}])('rejects invalid create and update %j',async fields=>{
+  await seed();const db=context(ADMIN);await assertFails(createIndexed(db,'devices/inne-40',{...validDevice(),...fields}));
+  await assertFails(updateDoc(doc(db,'devices/device-test'),{...fields,version:2,updatedAt:serverTimestamp(),updatedBy:ADMIN.uid}));
+ });
+ it('rejects approving an existing undetermined device',async()=>{
+  await seed();const db=context(ADMIN);await createIndexed(db,'devices/inne-40',{...validDevice(),status:'do_ustalenia',approvedForUse:false});
+  await assertFails(updateDoc(doc(db,'devices/inne-40'),{approvedForUse:true,version:2,updatedAt:serverTimestamp()}));
+ });
+});
+
+it('enforces undetermined inspection approval and rejects unknown status',async()=>{
+ await seed();const db=context(ADMIN);const data={inspectorUid:ADMIN.uid,createdBy:ADMIN.uid,createdAt:serverTimestamp(),locked:true,inspectionDate:new Date(),conditionScore:4,statusAfterInspection:'do_ustalenia',approvedForUse:false};
+ await assertSucceeds(setDoc(doc(db,'devices/device-test/inspections/undetermined'),data));
+ await assertFails(setDoc(doc(db,'devices/device-test/inspections/approved'),{...data,approvedForUse:true}));
+ await assertFails(setDoc(doc(db,'devices/device-test/inspections/unknown'),{...data,statusAfterInspection:'unknown'}));
+});

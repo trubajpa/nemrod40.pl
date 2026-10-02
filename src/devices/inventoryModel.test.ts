@@ -5,7 +5,7 @@ import { compareDeviceNumbers, deviceDocumentId, validDeviceNumber } from './dev
 import { formatCondition, validateInventoryDates, validateScore } from './validation'
 
 const timestamp = Timestamp.fromMillis(1000)
-const base = { location: new GeoPoint(1, 1), createdAt: timestamp, updatedAt: timestamp, number: 4, conditionScore: 4 }
+const base = { status: 'sprawne', location: new GeoPoint(1, 1), createdAt: timestamp, updatedAt: timestamp, number: 4, conditionScore: 4 }
 const snapshot = (data: Record<string, unknown>) => ({ id: 'legacy-random-id', data: () => data }) as unknown as QueryDocumentSnapshot
 
 describe('zgodność modelu inwentaryzacji', () => {
@@ -46,3 +46,8 @@ describe('zgodność modelu inwentaryzacji', () => {
     expect(validateInventoryDates({ inventoryUpdatedAt: new Date('invalid') })).toHaveProperty('inventoryUpdatedAt')
   })
 })
+
+it('validates undetermined and unknown device status on read',()=>{
+ expect(deviceConverter.fromFirestore(snapshot({...base,status:'do_ustalenia',approvedForUse:false}),{})).toMatchObject({status:'do_ustalenia',approvedForUse:false,conditionScore:4});
+ for(const data of [{status:'unknown'},{status:'do_ustalenia',approvedForUse:true}]) expect(()=>deviceConverter.fromFirestore(snapshot({...base,...data}),{})).toThrow('invalid_device');
+});

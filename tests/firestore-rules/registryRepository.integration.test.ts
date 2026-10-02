@@ -31,3 +31,12 @@ describe('AUDIT actual application repositories on demo emulator',()=>{
  it('reused old comment history must not authorize unrecorded content changes',async()=>{const comment=await createComment('random-legacy-A',{type:'uwaga',content:'A',relatedType:'device',relatedId:null},{uid:admin.uid,name:admin.displayName});await editComment('random-legacy-A',comment.id,'B',admin.uid);const oldEdit=(await getDoc(comment)).data()!.lastEditId;await editComment('random-legacy-A',comment.id,'A',admin.uid);await assertFails(updateDoc(comment,{content:'C bez historii',lastEditId:oldEdit,moderatedBy:admin.uid,moderatedAt:serverTimestamp()}))})
  it('OBSERVATION readiness true without complete index permits a duplicate through direct admin writes',async()=>{await env.withSecurityRulesDisabled(c=>setDoc(doc(c.firestore(),'deviceRegistry/identityIndex'),{ready:true}));const db=context(),batch=writeBatch(db);batch.set(doc(db,'devices/ambona-40'),{...base('40'),createdAt:serverTimestamp(),updatedAt:serverTimestamp()});batch.set(doc(db,'deviceNumbers/ambona-40'),{deviceId:'ambona-40',number:'40',type:'ambona',updatedBy:admin.uid,updatedAt:serverTimestamp()});await assertSucceeds(batch.commit());expect((await getDocs(collection(db,'devices'))).size).toBe(2)})
 })
+
+describe('do_ustalenia application writes under rules',()=>{
+ it('creates and updates while preserving score',async()=>{
+  await trustedIndex();const ref=await createDevice({number:'42',type:'ambona',name:'Nowe',districtNumber:null,latitude:null,longitude:null,guardianUid:null,guardianName:null,status:'do_ustalenia',conditionScore:4,active:true},admin.uid);
+  expect((await getDoc(ref)).data()).toMatchObject({status:'do_ustalenia',approvedForUse:false,conditionScore:4});
+  await updateDevice(ref.id,{description:'Updated'},admin.uid,1);
+  expect((await getDoc(ref)).data()).toMatchObject({status:'do_ustalenia',approvedForUse:false,conditionScore:4,description:'Updated'});
+ });
+});

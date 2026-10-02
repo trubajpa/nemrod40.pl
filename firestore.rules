@@ -9,7 +9,7 @@ service cloud.firestore {
     function member() { return get(memberPath()).data; }
     function isAdmin() { return isMember() && member().role == 'admin'; }
     function ownAudit(data) { return data.createdBy == request.auth.uid && data.updatedBy == request.auth.uid && data.createdAt == request.time && data.updatedAt == request.time; }
-    function validStatus(status) { return status in ['sprawne', 'wymaga_naprawy', 'wylaczone', 'archiwalne']; }
+    function validStatus(status) { return status in ['sprawne', 'wymaga_naprawy', 'wylaczone', 'archiwalne', 'do_ustalenia']; }
     function validScore(score) { return score is number && score in [0, 0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5]; }
     function validLabel(data) { return !('conditionLabel' in data) || data.conditionLabel == null || (data.conditionLabel is string && data.conditionLabel.size() <= 80); }
     function optionalDate(data, field) { return !(field in data) || data[field] == null || data[field] is timestamp; }
@@ -80,7 +80,8 @@ service cloud.firestore {
         && validPresentation(request.resource.data)
         && (request.resource.data.conditionScore == null || validScore(request.resource.data.conditionScore))
         && validInventory(request.resource.data)
-        && validStatus(request.resource.data.status);
+        && validStatus(request.resource.data.status)
+        && (request.resource.data.status != 'do_ustalenia' || request.resource.data.get('approvedForUse', null) == false);
       allow update: if isAdmin()
         && request.resource.data.createdBy == resource.data.createdBy
         && request.resource.data.createdAt == resource.data.createdAt
@@ -91,7 +92,8 @@ service cloud.firestore {
         && validPresentation(request.resource.data)
         && (request.resource.data.conditionScore == null || validScore(request.resource.data.conditionScore))
         && validInventory(request.resource.data)
-        && validStatus(request.resource.data.status);
+        && validStatus(request.resource.data.status)
+        && (request.resource.data.status != 'do_ustalenia' || request.resource.data.get('approvedForUse', null) == false);
       allow delete: if false;
 
       match /edits/{editId} {
@@ -150,6 +152,8 @@ service cloud.firestore {
         allow create: if isAdmin()
           && validScore(request.resource.data.conditionScore)
           && validLabel(request.resource.data)
+          && validStatus(request.resource.data.statusAfterInspection)
+          && (request.resource.data.statusAfterInspection != 'do_ustalenia' || request.resource.data.get('approvedForUse', null) == false)
           && request.resource.data.inspectionDate is timestamp
           && request.resource.data.inspectorUid == request.auth.uid
           && request.resource.data.createdBy == request.auth.uid

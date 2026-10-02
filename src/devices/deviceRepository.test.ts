@@ -63,3 +63,23 @@ describe('nowe ID i niezmienne pola audytowe', () => {
     expect(payload.version).toBeDefined()
   })
 })
+
+describe('status do_ustalenia', () => {
+  it('creates without approval and preserves the score', async () => {
+    await createDevice({...input,status:'do_ustalenia'},'admin');
+    expect(mocks.set).toHaveBeenCalledWith({path:'devices/ambona-4a'},expect.objectContaining({status:'do_ustalenia',approvedForUse:false,conditionScore:0}));
+  });
+  it('updates status without changing score or priority and rejects later approval', async () => {
+    mocks.get.mockResolvedValue({exists:()=>true,data:()=>({...input,status:'do_ustalenia',approvedForUse:false,version:1})});
+    await updateDevice('test',{status:'do_ustalenia'},'admin');
+    const change=mocks.update.mock.calls[0][1];
+    expect(change).toMatchObject({status:'do_ustalenia',approvedForUse:false});
+    expect(change).not.toHaveProperty('conditionScore');expect(change).not.toHaveProperty('priority');
+    await expect(updateDevice('test',{approvedForUse:true},'admin')).rejects.toThrow('invalid_status_approval');
+  });
+  it.each([{status:'unknown'},{status:'do_ustalenia',approvedForUse:true}])('rejects invalid combinations %j',async invalid=>{
+    await expect(createDevice({...input,...invalid} as DeviceInput,'admin')).rejects.toThrow('invalid_status_approval');
+    await expect(updateDevice('test',invalid as Partial<DeviceInput>,'admin')).rejects.toThrow('invalid_status_approval');
+    expect(mocks.set).not.toHaveBeenCalled();expect(mocks.update).not.toHaveBeenCalled();
+  });
+});

@@ -26,3 +26,13 @@ describe('widoki danych inwentaryzacji', () => {
     expect(label.parentElement).not.toHaveTextContent('27.09.2026')
   })
 })
+
+it('shows the undetermined label in registry and details',()=>{
+ hooks.useDevices.mockReturnValue({devices:[{...device,status:'do_ustalenia',approvedForUse:false}],loading:false,error:null});
+ const view=render(<MemoryRouter><DevicesRegistryPage/></MemoryRouter>);
+ expect(screen.getAllByText('Do ustalenia').length).toBeGreaterThan(0);
+ view.unmount();
+ hooks.useDeviceDetails.mockReturnValue({device:{...device,status:'do_ustalenia',approvedForUse:false},inspections:[],issues:[],comments:[],repairs:[],media:[],loading:false,error:null});
+ render(<MemoryRouter><DeviceDetailsPage/></MemoryRouter>);
+ expect(screen.getByText('Do ustalenia', {selector: '.status-badge'})).toBeInTheDocument();
+});

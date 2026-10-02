@@ -4,7 +4,7 @@ import { deviceConverter } from './converters';
 import type { Device, DeviceStatus, DeviceType } from './models';
 import { logDeviceError, safeSnapshot } from './repositoryUtils';
 import { compareDeviceNumbers, deviceDocumentId, normalizeDeviceNumber } from './deviceIdentity';
-import { validateCoordinates, validateInventoryDates, validateScore } from './validation';
+import { validateCoordinates, validateInventoryDates, validateScore, validateStatusApproval } from './validation';
 export type DeviceInput = {
     number: string;
     name: string;
@@ -15,6 +15,7 @@ export type DeviceInput = {
     guardianUid: string | null;
     guardianName: string | null;
     status: DeviceStatus;
+    approvedForUse?: boolean;
     conditionScore: number | null;
     conditionLabel?: string | null;
     active: boolean;
@@ -43,6 +44,7 @@ catch (error) {
 } }
 function deviceFields(input: Partial<DeviceInput>) {
     const { latitude, longitude, inspectionDate, inventoryUpdatedAt, ...data } = input;
+    if (input.status !== undefined && Object.keys(validateStatusApproval(input.status, input.approvedForUse)).length) throw new Error('invalid_status_approval');
     if (Object.keys(validateInventoryDates(input)).length)
         throw new Error('invalid_inventory_date');
     if (input.conditionScore != null && !validateScore(input.conditionScore))
@@ -61,6 +63,7 @@ function deviceFields(input: Partial<DeviceInput>) {
             throw new Error('invalid_list');
     return {
         ...data,
+        ...(input.status === 'do_ustalenia' ? { approvedForUse: false } : {}),
         ...(latitude !== undefined && longitude !== undefined ? { location: latitude === null && longitude === null ? null : new GeoPoint(latitude!, longitude!), googleMaps: latitude === null && longitude === null ? null : `https://maps.google.com/?q=${latitude},${longitude}` } : {}),
         ...(inspectionDate !== undefined ? { inspectionDate: inspectionDate ? Timestamp.fromDate(inspectionDate) : null } : {}),
         ...(inventoryUpdatedAt !== undefined ? { inventoryUpdatedAt: inventoryUpdatedAt ? Timestamp.fromDate(inventoryUpdatedAt) : null } : {}),
@@ -101,6 +104,7 @@ export async function updateDevice(deviceId: string, input: Partial<DeviceInput>
         if (!snap.exists())
             throw new Error('device_not_found');
         const before = snap.data();
+        if (input.approvedForUse !== undefined && Object.keys(validateStatusApproval(input.status ?? before.status, input.approvedForUse)).length) throw new Error('invalid_status_approval');
         if (expectedVersion !== undefined && before.version !== expectedVersion)
             throw new Error('device_changed_reload');
         const type = input.type ?? before.type, number = normalizeDeviceNumber(String(input.number ?? before.number));

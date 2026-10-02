@@ -37,3 +37,13 @@ describe('formularze inwentaryzacji', () => {
     expect(data).not.toHaveProperty('updatedAt')
   })
 })
+
+it('offers and saves Do ustalenia without changing the score',async()=>{
+ render(<AdminCreateDeviceForm uid="test-admin"/>);
+ fireEvent.change(screen.getByLabelText('Numer'),{target:{value:'42'}});
+ fireEvent.change(screen.getByLabelText('Nazwa'),{target:{value:'Test'}});
+ fireEvent.change(screen.getByLabelText('Status'),{target:{value:'do_ustalenia'}});
+ expect(screen.getByRole('option',{name:'Do ustalenia'})).toBeInTheDocument();
+ fireEvent.submit(screen.getByLabelText('Numer').closest('form')!);
+ await waitFor(()=>expect(createDevice).toHaveBeenCalledWith(expect.objectContaining({status:'do_ustalenia',conditionScore:null}),'test-admin'));
+});

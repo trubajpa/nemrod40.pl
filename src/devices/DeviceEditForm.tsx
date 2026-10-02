@@ -2,7 +2,7 @@ import { useState, type FormEvent } from 'react';
 import type { Device, DeviceStatus, DeviceType } from './models';
 import { updateDevice, type DeviceInput } from './deviceRepository';
 import { deviceDocumentId } from './deviceIdentity';
-import { validateCoordinates, validateInventoryDates, validateScore } from './validation';
+import { validateCoordinates, validateInventoryDates, validateScore, validateStatusApproval } from './validation';
 const dateValue = (date?: {
     toDate: () => Date;
 } | null) => date ? new Intl.DateTimeFormat('sv-SE').format(date.toDate()) : '';
@@ -21,7 +21,7 @@ export function DeviceEditForm({ device, uid }: {
         const input: DeviceInput = { name: text('name'), number: text('number').toUpperCase(), type: text('type') as DeviceType, guardianName: text('guardianName') || null, guardianUid: device.guardianUid, rewir: text('rewir') || null, districtNumber: number('districtNumber'), latitude: number('latitude'), longitude: number('longitude'), conditionScore: number('score'), conditionLabel: text('conditionLabel') || null, status: text('status') as DeviceStatus, description: text('description'), defects: text('defects').split('\n').filter(Boolean), recommendations: text('recommendations').split('\n').filter(Boolean), active: device.active, inspectionDate: date('inspectionDate'), inventoryUpdatedAt: date('inventoryUpdatedAt'), numberNeedsVerification: f.has('numberNeedsVerification') };
         try {
             deviceDocumentId(input.type, input.number);
-            if (!input.name || input.conditionScore !== null && !validateScore(input.conditionScore) || !(input.latitude === null && input.longitude === null) && (input.latitude === null || input.longitude === null || !validateCoordinates(input.latitude, input.longitude)) || Object.keys(validateInventoryDates(input)).length)
+            if (Object.keys(validateStatusApproval(input.status)).length || !input.name || input.conditionScore !== null && !validateScore(input.conditionScore) || !(input.latitude === null && input.longitude === null) && (input.latitude === null || input.longitude === null || !validateCoordinates(input.latitude, input.longitude)) || Object.keys(validateInventoryDates(input)).length)
                 throw Error('Popraw ocenę, GPS, nazwę lub daty.');
             setPending(input);
             setPendingVersion(device.version);
@@ -52,7 +52,7 @@ export function DeviceEditForm({ device, uid }: {
   <label>Opiekun<input name="guardianName" defaultValue={device.guardianName ?? ''} placeholder="do ustalenia"/></label><label>Rewir<input name="rewir" defaultValue={device.rewir ?? ''} placeholder="do ustalenia"/></label><label>Obwód<input name="districtNumber" type="number" defaultValue={device.districtNumber ?? ''}/></label>
   <label>Ocena<input name="score" type="number" min="0" max="5" step="0.5" defaultValue={device.conditionScore ?? ''} placeholder="do ustalenia"/></label><label>Opis oceny<input name="conditionLabel" maxLength={80} defaultValue={device.conditionLabel ?? ''}/></label>
   <label>Szerokość<input name="latitude" type="number" step="any" defaultValue={device.location?.latitude ?? ''}/></label><label>Długość<input name="longitude" type="number" step="any" defaultValue={device.location?.longitude ?? ''}/></label>
-  <label>Status<select name="status" defaultValue={device.status}><option value="sprawne">Sprawne</option><option value="wymaga_naprawy">Wymaga naprawy</option><option value="wylaczone">Wyłączone</option><option value="archiwalne">Archiwalne</option></select></label>
+  <label>Status<select name="status" defaultValue={device.status}><option value="do_ustalenia">Do ustalenia</option><option value="sprawne">Sprawne</option><option value="wymaga_naprawy">Wymaga naprawy</option><option value="wylaczone">Wyłączone</option><option value="archiwalne">Archiwalne</option></select></label>
   <label>Opis<textarea name="description" defaultValue={device.description ?? ''}/></label><label>Usterki<textarea name="defects" defaultValue={device.defects?.join('\n') ?? ''}/></label><label>Zalecenia<textarea name="recommendations" defaultValue={device.recommendations?.join('\n') ?? ''}/></label>
   <label>Data inwentaryzacji<input name="inspectionDate" type="date" defaultValue={dateValue(device.inspectionDate)}/></label><label>Data aktualizacji inwentaryzacji<input name="inventoryUpdatedAt" type="date" defaultValue={dateValue(device.inventoryUpdatedAt)}/></label>
   <button className="button" disabled={busy}>Zapisz metryczkę</button></form>

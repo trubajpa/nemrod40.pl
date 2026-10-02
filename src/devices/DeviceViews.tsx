@@ -13,7 +13,7 @@ import type { DeviceFilters } from './models';
 import { useDeviceDetails, useDevices } from './useDeviceData';
 import { formatCondition, validateCommentInput } from './validation';
 const typeLabels = { ambona: 'Ambona', zwyzka: 'Zwyżka', pasnik: 'Paśnik', lizawka: 'Lizawka', inne: 'Inne' };
-const statusLabels = { sprawne: 'Sprawne', wymaga_naprawy: 'Wymaga naprawy', wylaczone: 'Wyłączone z użytkowania', archiwalne: 'Archiwalne' };
+const statusLabels = { sprawne: 'Sprawne', wymaga_naprawy: 'Wymaga naprawy', wylaczone: 'Wyłączone z użytkowania', archiwalne: 'Archiwalne', do_ustalenia: 'Do ustalenia' };
 const formatDate = (value: {
     toDate: () => Date;
 } | null | undefined) => value?.toDate().toLocaleDateString('pl-PL') ?? 'Brak';

@@ -1,6 +1,6 @@
 import type { GeoPoint, Timestamp } from 'firebase/firestore';
 export type DeviceType = 'ambona' | 'zwyzka' | 'pasnik' | 'lizawka' | 'inne';
-export type DeviceStatus = 'sprawne' | 'wymaga_naprawy' | 'wylaczone' | 'archiwalne';
+export type DeviceStatus = 'sprawne' | 'wymaga_naprawy' | 'wylaczone' | 'archiwalne' | 'do_ustalenia';
 export type IssueStatus = 'zgloszona' | 'zaplanowana' | 'w_naprawie' | 'usunieta' | 'odrzucona';
 export interface Device {
     id: string;
@@ -15,6 +15,7 @@ export interface Device {
     guardianUid: string | null;
     guardianName: string | null;
     status: DeviceStatus;
+    approvedForUse?: boolean;
     conditionScore: number | null;
     rewir?: string | null;
     description?: string;

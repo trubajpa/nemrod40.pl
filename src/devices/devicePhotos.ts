@@ -1,6 +1,10 @@
 import { getStorage, getBlob, ref, uploadBytes } from 'firebase/storage';
 import { photoStorageEnabled, photoStorageUnavailableMessage } from './photoStorage';
-export function validPhotoPath(path: string) { return /^\/images\/devices\/[A-Za-z0-9/_-]+\.(jpg|jpeg|png|webp)$/i.test(path) || /^devices\/[A-Za-z0-9_-]+\/[A-Za-z0-9_.-]+$/.test(path); }
+export function validPhotoPath(path: string) {
+    // Imported photos include an inventory directory beneath the device ID.
+    return /^\/images\/devices\/[A-Za-z0-9/_-]+\.(jpg|jpeg|png|webp)$/i.test(path)
+        || /^devices\/[A-Za-z0-9_-]+\/(?:[A-Za-z0-9_-]+\/)*[A-Za-z0-9_-][A-Za-z0-9_.-]*$/.test(path);
+}
 export async function photoUrl(path: string): Promise<string> {
     if (!validPhotoPath(path))
         throw new Error('invalid_photo_path');

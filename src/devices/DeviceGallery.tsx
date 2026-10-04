@@ -3,6 +3,7 @@ import type { Device, DeviceMedia } from './models';
 import { addDeviceMedia, changeDeviceMedia, getMedia } from './mediaRepository';
 import { photoUrl, uploadDevicePhoto, validPhotoPath } from './devicePhotos';
 import { photoStorageEnabled, photoStorageUnavailableMessage } from './photoStorage';
+import { photoErrorCode } from './photoDiagnostics';
 export function DeviceCover({ device }: {
     device: Device;
 }) {
@@ -21,6 +22,7 @@ export function DevicePhoto({ path, alt }: {
     path: string | null | undefined;
     alt: string;
 }) {
+    const [failure, setFailure] = useState<{ path: string; stage: 'download' | 'render'; code: string } | null>(null);
     const [resolved, setResolved] = useState<{
         path: string;
         url: string;
@@ -29,9 +31,17 @@ export function DevicePhoto({ path, alt }: {
         void photoUrl(path).then(value => { url = value; if (active)
             setResolved({ path, url: value });
         else if (value.startsWith('blob:'))
-            URL.revokeObjectURL(value); }).catch(() => { }); return () => { active = false; if (url?.startsWith('blob:'))
+            URL.revokeObjectURL(value); }).catch(error => { if (active) {
+                const code = photoErrorCode(error);
+                setFailure({ path, stage: 'download', code });
+                console.warn('Device photo error', { stage: 'download', code });
+            } }); return () => { active = false; if (url?.startsWith('blob:'))
         URL.revokeObjectURL(url); }; }, [path]);
-    return resolved && resolved.path === path ? <img src={resolved.url} alt={alt}/> : <span className="device-photo-placeholder">Brak dostępnego zdjęcia</span>;
+    const error = failure?.path === path ? failure : null;
+    return resolved && resolved.path === path && !error ? <img src={resolved.url} alt={alt} data-photo-stage="render" onError={() => {
+        setFailure({ path: resolved.path, stage: 'render', code: 'photo/render-failed' });
+        console.warn('Device photo error', { stage: 'render', code: 'photo/render-failed' });
+    }}/> : <span className="device-photo-placeholder" data-photo-stage={error?.stage ?? (path ? 'download' : 'empty')}>Brak dostępnego zdjęcia{error && <small role="status">{error.stage === 'render' ? 'Render' : 'Pobieranie'}: {error.code}</small>}</span>;
 }
 export function DeviceGallery({ device, media, admin, uid }: {
     device: Device;

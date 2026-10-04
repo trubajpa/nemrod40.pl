@@ -1,0 +1,8 @@
+[
+  {
+    "origin": ["https://nemrod40.pl", "https://www.nemrod40.pl"],
+    "method": ["GET", "HEAD"],
+    "responseHeader": ["Content-Type", "Content-Length", "Authorization", "X-Firebase-Storage-Version", "X-Firebase-GMPID", "X-Firebase-AppCheck", "Range"],
+    "maxAgeSeconds": 3600
+  }
+]

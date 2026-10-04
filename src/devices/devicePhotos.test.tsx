@@ -5,6 +5,7 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { DevicesRegistryPage, DeviceDetailsPage } from './DeviceViews'
 import { DeviceCover, DevicePhoto } from './DeviceGallery'
 import { photoUrl, validPhotoPath } from './devicePhotos'
+import { photoErrorCode } from './photoDiagnostics'
 import type { Device, DeviceMedia } from './models'
 
 const mocks = vi.hoisted(() => ({
@@ -61,23 +62,28 @@ it('keeps direct Storage and repository paths supported', () => {
   expect(validPhotoPath('/images/devices/ambona-33/photo.webp')).toBe(true)
 })
 
-it('renders the imported primary photo in cards and table, retaining the empty-device placeholder', async () => {
+it.each(['3', '4', '33', '34'])('renders ambona %s in cards and table, retaining the empty-device placeholder', async number => {
+  const imported = { ...device, id: `ambona-${number}`, number, primaryPhotoPath: path.replace('ambona-3/', `ambona-${number}/`) }
+  mocks.useDevices.mockReturnValue({ ...mocks.useDevices(), devices: [imported, { ...device, id: 'no-photo', number: '99', currentPhotoId: null, primaryPhotoPath: null }] })
   render(<MemoryRouter><DevicesRegistryPage /></MemoryRouter>)
-  expect(await screen.findByAltText('Urządzenie 3')).toHaveAttribute('src', 'blob:device-photo')
+  expect(await screen.findByAltText(`Urządzenie ${number}`)).toHaveAttribute('src', 'blob:device-photo')
   expect(screen.getByText('Brak dostępnego zdjęcia')).toBeInTheDocument()
   fireEvent.click(screen.getByRole('button', { name: 'Tabela' }))
-  expect(await screen.findByAltText('Urządzenie 3')).toHaveAttribute('src', 'blob:device-photo')
+  expect(await screen.findByAltText(`Urządzenie ${number}`)).toHaveAttribute('src', 'blob:device-photo')
   expect(screen.getByRole('table')).toBeInTheDocument()
   expect(screen.getByText('Brak dostępnego zdjęcia')).toBeInTheDocument()
   expect(mocks.getMedia).not.toHaveBeenCalled()
 })
 
-it('renders the primary photo and all visible gallery photos on the details page', async () => {
-  render(<MemoryRouter initialEntries={['/panel/urzadzenia/ambona-3']}><Routes><Route path="/panel/urzadzenia/:id" element={<DeviceDetailsPage />} /></Routes></MemoryRouter>)
+it.each(['3', '4', '33', '34'])('renders primary and gallery photos in ambona %s details', async number => {
+  const imported = { ...device, id: `ambona-${number}`, number, primaryPhotoPath: path.replace('ambona-3/', `ambona-${number}/`) }
+  const importedMedia = media.map(m => ({ ...m, path: m.path.replace('ambona-3/', `ambona-${number}/`) }))
+  mocks.useDeviceDetails.mockReturnValue({ ...mocks.useDeviceDetails(), device: imported, media: importedMedia })
+  render(<MemoryRouter initialEntries={[`/panel/urzadzenia/ambona-${number}`]}><Routes><Route path="/panel/urzadzenia/:id" element={<DeviceDetailsPage />} /></Routes></MemoryRouter>)
   await waitFor(() => expect(screen.getAllByAltText('Zdjęcie główne 3')).toHaveLength(2))
   for (const image of screen.getAllByAltText('Zdjęcie główne 3')) expect(image).toHaveAttribute('src', 'blob:device-photo')
   expect(await screen.findByAltText('Drugie zdjęcie 3')).toHaveAttribute('src', 'blob:device-photo')
-  expect(mocks.ref).toHaveBeenCalledWith({}, secondPath)
+  expect(mocks.ref).toHaveBeenCalledWith({}, importedMedia[1].path)
 })
 
 it('resolves a legacy primary media reference without a primaryPhotoPath', async () => {
@@ -92,4 +98,25 @@ it('retains the placeholder when Storage denies a read', async () => {
   await waitFor(() => expect(mocks.getBlob).toHaveBeenCalled())
   expect(screen.queryByAltText('Denied photo')).not.toBeInTheDocument()
   expect(screen.getByText('Brak dostępnego zdjęcia')).toBeInTheDocument()
+  expect(screen.getByRole('status')).toHaveTextContent('Pobieranie: storage/unauthorized')
+})
+
+it('shows a safe render error if the browser cannot decode the downloaded image', async () => {
+  render(<DevicePhoto path={path} alt="Broken image" />)
+  fireEvent.error(await screen.findByAltText('Broken image'))
+  expect(screen.getByRole('status')).toHaveTextContent('Render: photo/render-failed')
+  expect(screen.queryByAltText('Broken image')).not.toBeInTheDocument()
+})
+
+it('never displays arbitrary error messages or session data in diagnostics', async () => {
+  const secret = 'private-session-value'
+  expect(photoErrorCode({ code: secret, message: secret })).toBe('photo/download-failed')
+  expect(photoErrorCode(new Error(secret))).toBe('photo/download-failed')
+  mocks.getBlob.mockRejectedValue({ code: secret, message: secret, customData: { serverResponse: secret } })
+  const log = vi.spyOn(console, 'warn').mockImplementation(() => {})
+  render(<DevicePhoto path={path} alt="Failed download" />)
+  expect(await screen.findByRole('status')).toHaveTextContent('Pobieranie: photo/download-failed')
+  expect(document.body.textContent).not.toContain(secret)
+  expect(log).toHaveBeenCalledWith('Device photo error', { stage: 'download', code: 'photo/download-failed' })
+  log.mockRestore()
 })

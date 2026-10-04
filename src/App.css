@@ -48,3 +48,4 @@ h1,h2,h3,p { margin-top: 0; } h1,h2,h3 { font-family: Georgia, "Times New Roman"
 @media (max-width:430px) { .registry-heading { display:block; } .registry-heading .button { margin-bottom:1rem; } .device-filters,.device-row dl,.device-metrics,.media-grid { grid-template-columns:1fr; } .device-row { padding:.8rem; } .registry-shell { padding:1rem; } .row-actions { align-items:stretch; flex-direction:column; } .row-actions>* { width:100%; } }
 
 .status-badge.do_ustalenia { background: #e5e7eb; color: #374151; }
+.build-revision{font-size:11px;color:#617064;text-align:right;padding-bottom:4px}

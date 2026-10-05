@@ -6,6 +6,7 @@ import { useAuth } from './auth/useAuth'
 import { LoginPage } from './pages/LoginPage'
 import { DevicePlaceholder, DevicesPage, MemberPanel } from './pages/MemberPages'
 import './App.css'
+import { ForumPage } from './forum/ForumPage'
 
 const board = [
   { name: 'Mirosław Wyłupek', role: 'Prezes', image: '/images/board/miroslaw-wylupek-prezes.webp' },
@@ -32,6 +33,7 @@ function Layout() {
   const { isActiveMember } = useAuth()
   useEffect(() => { window.scrollTo(0, 0) }, [location.pathname])
   const links = [['/', 'Start'], ['/o-kole', 'O kole'], ['/aktualnosci', 'Aktualności'], ['/zarzad', 'Zarząd'], ['/dzialalnosc', 'Działalność'], ['/galeria', 'Galeria'], ['/kontakt', 'Kontakt']]
+  if (isActiveMember) links.push(['/forum', 'Forum'])
   return <>
     <a className="skip-link" href="#main">Przejdź do treści</a>
     <header className="site-header"><div className="container header-inner">
@@ -39,7 +41,7 @@ function Layout() {
       <button className="menu-toggle" type="button" aria-expanded={open} aria-controls="main-nav" onClick={() => setOpen(!open)}><Icon name={open ? 'close' : 'menu'}/><span className="sr-only">{open ? 'Zamknij menu' : 'Otwórz menu'}</span></button>
       <nav id="main-nav" className={open ? 'nav open' : 'nav'} aria-label="Główna nawigacja">{links.map(([to, label]) => <NavLink key={to} to={to} end={to === '/'} onClick={() => setOpen(false)}>{label}</NavLink>)}<Link className="button button-small" to={isActiveMember ? '/panel' : '/logowanie'} onClick={() => setOpen(false)}>Strefa członkowska</Link></nav>
     </div><div className="container build-revision" aria-label="Wersja aplikacji">Wersja {import.meta.env.VITE_BUILD_REVISION ?? 'lokalna'}</div></header>
-    <main id="main"><Routes><Route path="/" element={<Home/>}/><Route path="/o-kole" element={<About/>}/><Route path="/aktualnosci" element={<NewsList/>}/><Route path="/aktualnosci/:slug" element={<NewsDetail/>}/><Route path="/zarzad" element={<BoardPage/>}/><Route path="/dzialalnosc" element={<ActivitiesPage/>}/><Route path="/galeria" element={<GalleryPage/>}/><Route path="/kontakt" element={<Contact/>}/><Route path="/logowanie" element={<LoginPage/>}/><Route path="/strefa-czlonka" element={<Navigate to="/logowanie" replace/>}/><Route element={<ProtectedRoute/>}><Route path="/panel" element={<MemberPanel/>}/><Route path="/panel/urzadzenia" element={<DevicesPage/>}/><Route path="/panel/urzadzenia/:id" element={<DevicePlaceholder/>}/></Route><Route path="*" element={<NotFound/>}/></Routes></main>
+    <main id="main"><Routes><Route path="/" element={<Home/>}/><Route path="/o-kole" element={<About/>}/><Route path="/aktualnosci" element={<NewsList/>}/><Route path="/aktualnosci/:slug" element={<NewsDetail/>}/><Route path="/zarzad" element={<BoardPage/>}/><Route path="/dzialalnosc" element={<ActivitiesPage/>}/><Route path="/galeria" element={<GalleryPage/>}/><Route path="/kontakt" element={<Contact/>}/><Route path="/logowanie" element={<LoginPage/>}/><Route path="/strefa-czlonka" element={<Navigate to="/logowanie" replace/>}/><Route element={<ProtectedRoute/>}><Route path="/forum" element={<ForumPage/>}/><Route path="/forum/:topicId" element={<ForumPage/>}/><Route path="/panel" element={<MemberPanel/>}/><Route path="/panel/urzadzenia" element={<DevicesPage/>}/><Route path="/panel/urzadzenia/:id" element={<DevicePlaceholder/>}/></Route><Route path="*" element={<NotFound/>}/></Routes></main>
     <Footer/>
   </>
 }

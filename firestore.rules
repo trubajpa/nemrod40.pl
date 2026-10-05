@@ -187,6 +187,77 @@ service cloud.firestore {
         allow delete: if false;
       }
     }
+    // Forum public content contains no UID, e-mail or private author profile.
+    // Each new post and its private identity must be committed atomically.
+    function forumIdentity(authorPath) {
+      let identity = getAfter(authorPath).data;
+      return identity.uid == request.auth.uid && identity.email == request.auth.token.email
+        && identity.name == member().displayName && identity.createdAt == request.time;
+    }
+    function forumPost(data, authorPath, topic) {
+      return data.keys().hasOnly(topic
+          ? ['title','body','signature','pseudonym','createdAt','state','deletedAt']
+          : ['body','signature','pseudonym','createdAt','state','deletedAt'])
+        && data.body is string && data.body.size() <= 6000 && data.body.matches('[\\s\\S]*[^\\s][\\s\\S]*')
+        && data.signature is string && data.signature.size() <= 200 && data.signature.matches('[\\s\\S]*[^\\s][\\s\\S]*')
+        && data.pseudonym is bool
+        && (data.pseudonym ? data.signature.size() <= 50 : data.signature == member().displayName)
+        && (!topic || (data.title is string && data.title.size() <= 160 && data.title.matches('[\\s\\S]*[^\\s][\\s\\S]*')))
+        && data.createdAt == request.time && data.state == 'active' && data.deletedAt == null
+        && !exists(authorPath) && forumIdentity(authorPath);
+    }
+    function forumAuthor(data, postPath) {
+      return data.keys().hasOnly(['uid','name','email','createdAt'])
+        && data.uid == request.auth.uid && data.email == request.auth.token.email
+        && data.name == member().displayName && data.createdAt == request.time
+        && !exists(postPath) && getAfter(postPath).data.createdAt == request.time;
+    }
+    function forumDelete() {
+      return isAdmin() && resource.data.state == 'active'
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['state','deletedAt'])
+        && request.resource.data.state == 'deleted' && request.resource.data.deletedAt == request.time;
+    }
+    function forumTopicActive(topicId) { return get(/databases/$(database)/documents/forumTopics/$(topicId)).data.state == 'active'; }
+    function forumReplyActive(topicId, replyId) { return get(/databases/$(database)/documents/forumTopics/$(topicId)/replies/$(replyId)).data.state == 'active'; }
+
+    match /forumTopics/{topicId} {
+      allow read: if isMember() && (resource.data.state == 'active' || isAdmin());
+      allow create: if isMember() && forumPost(request.resource.data, /databases/$(database)/documents/forumAuthors/$(topicId), true);
+      allow update: if forumDelete();
+      allow delete: if false;
+      match /replies/{replyId} {
+        allow read: if isMember() && (isAdmin() || (forumTopicActive(topicId) && resource.data.state == 'active'));
+        allow create: if isMember()
+          && getAfter(/databases/$(database)/documents/forumTopics/$(topicId)).data.state == 'active'
+          && forumPost(request.resource.data, /databases/$(database)/documents/forumAuthors/$(topicId)/replies/$(replyId), false);
+        allow update: if forumDelete();
+        allow delete: if false;
+        match /comments/{commentId} {
+          allow read: if isMember() && (isAdmin() || (forumTopicActive(topicId) && forumReplyActive(topicId, replyId) && resource.data.state == 'active'));
+          allow create: if isMember()
+            && getAfter(/databases/$(database)/documents/forumTopics/$(topicId)).data.state == 'active'
+            && getAfter(/databases/$(database)/documents/forumTopics/$(topicId)/replies/$(replyId)).data.state == 'active'
+            && forumPost(request.resource.data, /databases/$(database)/documents/forumAuthors/$(topicId)/replies/$(replyId)/comments/$(commentId), false);
+          allow update: if forumDelete();
+          allow delete: if false;
+        }
+      }
+    }
+    match /forumAuthors/{topicId} {
+      allow read: if isAdmin();
+      allow create: if isMember() && forumAuthor(request.resource.data, /databases/$(database)/documents/forumTopics/$(topicId));
+      allow update, delete: if false;
+      match /replies/{replyId} {
+        allow read: if isAdmin();
+        allow create: if isMember() && forumAuthor(request.resource.data, /databases/$(database)/documents/forumTopics/$(topicId)/replies/$(replyId));
+        allow update, delete: if false;
+        match /comments/{commentId} {
+          allow read: if isAdmin();
+          allow create: if isMember() && forumAuthor(request.resource.data, /databases/$(database)/documents/forumTopics/$(topicId)/replies/$(replyId)/comments/$(commentId));
+          allow update, delete: if false;
+        }
+      }
+    }
     match /{document=**} { allow read, write: if false; }
   }
 }

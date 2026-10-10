@@ -1,0 +1,6 @@
+.circle-members-search { display: grid; gap: .5rem; max-width: 32rem; font-weight: 600; }
+.circle-members-search input { width: 100%; padding: .8rem; border: 1px solid #a9b5ab; border-radius: .5rem; font: inherit; background: white; }
+.circle-members-list { list-style: none; padding: 0; margin: 1.5rem 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .75rem; }
+.circle-members-list li { padding: 1rem; border: 1px solid #dce3dc; border-radius: .5rem; background: white; }
+@media (max-width: 800px) { .circle-members-list { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 500px) { .circle-members-list { grid-template-columns: 1fr; } }

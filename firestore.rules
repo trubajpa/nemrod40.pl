@@ -64,6 +64,8 @@ service cloud.firestore {
     }
     match /deviceRegistry/{id} { allow read: if isMember(); allow write: if false; }
 
+    match /circleMembers/{id} { allow read: if isMember(); allow write: if false; }
+
     match /authorizedUsers/{email} {
       allow get: if isAdmin() || (hasEmail() && request.auth.token.email.lower() == email);
       // All privilege changes go through the Admin SDK backend.

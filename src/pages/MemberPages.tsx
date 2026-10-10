@@ -16,6 +16,7 @@ export function MemberPanel() {
       <div className="member-grid">
         <Link className="member-card" to="/forum"><span>Rozmowy członków</span><h2>Forum Koła</h2><p>Tematy, odpowiedzi i komentarze dostępne dla uprawnionych członków.</p><strong>Otwórz forum →</strong></Link>
         <Link className="member-card" to="/panel/urzadzenia"><span>Rejestr wewnętrzny</span><h2>Przegląd urządzeń łowieckich</h2><p>Przejdź do bezpiecznego obszaru ewidencji urządzeń Koła.</p><strong>Otwórz przegląd →</strong></Link>
+        {role === 'admin' && <Link className="member-card" to="/panel/dostep"><span>Administracja</span><h2>Dostęp użytkowników</h2><p>Rozpatrz oczekujące wnioski o dostęp.</p><strong>Otwórz wnioski →</strong></Link>}
         <aside className="member-notice"><h2>Informacja</h2><p>Dane w tej strefie są przeznaczone wyłącznie dla członków Koła Łowieckiego nr 40 „Nemrod”.</p></aside>
       </div>
       <Link className="public-back-link" to="/">← Przejdź do strony publicznej</Link>

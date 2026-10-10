@@ -8,7 +8,7 @@ describe('statyczny kontrakt firestore.rules', () => {
     expect(rules).toContain("get(memberPath()).data.active == true")
   })
   it('blokuje samodzielną zmianę authorizedUsers i roli', () => {
-    expect(rules).toMatch(/match \/authorizedUsers\/\{email\}[\s\S]*?allow write: if false/)
+    expect(rules).toMatch(/match \/authorizedUsers\/\{email\}[\s\S]*?allow update, delete, list: if false/)
   })
   it('wiąże komentarz z UID, nazwą i czasem żądania', () => {
     expect(rules).toContain('request.resource.data.authorUid == request.auth.uid')

@@ -86,3 +86,11 @@ describe('LoginPage Google sign-in', () => {
     expect(screen.getByText('Chroniona trasa docelowa')).toBeInTheDocument()
   })
 })
+
+it('pokazuje stan oczekiwania i ukrywa formularz po zgłoszeniu Google', () => {
+  mocks.useAuth.mockReturnValue({ ...inactiveAuth, user: { email: 'pending@example.test' }, logout: vi.fn(), accessError: 'Oczekujesz na zatwierdzenie' })
+  renderLogin()
+  expect(screen.getByRole('heading', { name: 'Oczekujesz na zatwierdzenie' })).toBeInTheDocument()
+  expect(screen.getByText('pending@example.test')).toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: 'Zaloguj przez Google' })).not.toBeInTheDocument()
+})

@@ -15,7 +15,7 @@ import { auth } from '../lib/firebase'
 type LoginLocationState = { from?: { pathname?: string; search?: string } }
 
 export function LoginPage() {
-  const { loading, isActiveMember, accessError, clearAccessError } = useAuth()
+  const { user, logout, loading, isActiveMember, accessError, clearAccessError } = useAuth()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
@@ -98,10 +98,10 @@ export function LoginPage() {
         <p>{resetMode ? 'Podaj adres przypisany do konta. Wyślemy instrukcję ustawienia nowego hasła.' : 'Zaloguj się, aby przejść do materiałów przeznaczonych dla członków Koła.'}</p>
       </div>
 
-      {(error || accessError) && <div className="form-message error" role="alert">{accessError ?? error}</div>}
+      {!user && (error || accessError) && <div className="form-message error" role="alert">{accessError ?? error}</div>}
       {resetSent && <div className="form-message success" role="status">Wysłaliśmy wiadomość z linkiem do ustawienia lub zmiany hasła. Sprawdź również folder spam.</div>}
 
-      {resetMode ? <form className="auth-form" onSubmit={handleReset}>
+      {user && !isActiveMember ? <div role="status"><h2>{accessError === 'Wniosek o dostęp został odrzucony.' ? 'Wniosek odrzucony' : 'Oczekujesz na zatwierdzenie'}</h2><p>{user.email}</p><p>{accessError === 'Wniosek o dostęp został odrzucony.' ? 'Skontaktuj się z administratorem Koła.' : 'Administrator rozpatrzy Twój wniosek. Po zatwierdzeniu zaloguj się ponownie.'}</p><button className="button outline" onClick={() => void logout()}>Wyloguj się</button></div> : resetMode ? <form className="auth-form" onSubmit={handleReset}>
         <label htmlFor="reset-email">Login (adres e-mail)</label>
         <input id="reset-email" type="email" autoComplete="email" value={email} onChange={(event) => setEmail(event.target.value)} required disabled={busy || resetSent}/>
         <button className="button full-button" type="submit" disabled={busy || resetSent}>{busy ? 'Wysyłanie…' : 'Wyślij link'}</button>

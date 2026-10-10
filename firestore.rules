@@ -65,8 +65,46 @@ service cloud.firestore {
     match /deviceRegistry/{id} { allow read: if isMember(); allow write: if false; }
 
     match /authorizedUsers/{email} {
-      allow read: if hasEmail() && request.auth.token.email == email;
-      allow write: if false;
+      allow get: if isAdmin() || (hasEmail() && request.auth.token.email.lower() == email);
+      allow create: if isAdmin() && request.resource.data.keys().hasAll(['active','role','displayName'])
+        && request.resource.data.keys().hasOnly(['active','role','displayName'])
+        && request.resource.data.active == true && request.resource.data.role == 'member'
+        && request.resource.data.displayName is string && request.resource.data.displayName.size() > 0
+        && email == email.lower();
+      allow update, delete, list: if false;
+    }
+
+    function googleApplicant(uid, data) {
+      return hasEmail() && request.auth.uid == uid
+        && request.auth.token.email_verified == true
+        && request.auth.token.firebase.sign_in_provider == 'google.com'
+        && data.uid == uid && data.email == request.auth.token.email.lower()
+        && data.displayName == request.auth.token.get('name', '')
+        && data.displayName is string && data.displayName.size() <= 200;
+    }
+    function requestFields(data) {
+      return data.keys().hasAll(['uid','email','displayName','requestedAt','updatedAt','status','reviewedAt','reviewedBy'])
+        && data.keys().hasOnly(['uid','email','displayName','requestedAt','updatedAt','status','reviewedAt','reviewedBy']);
+    }
+    match /accessRequests/{uid} {
+      allow get: if isAdmin() || (hasEmail() && request.auth.uid == uid);
+      allow list: if isAdmin();
+      allow create: if googleApplicant(uid, request.resource.data) && !isMember()
+        && requestFields(request.resource.data) && request.resource.data.status == 'pending'
+        && request.resource.data.requestedAt == request.time && request.resource.data.updatedAt == request.time
+        && request.resource.data.reviewedAt == null && request.resource.data.reviewedBy == null;
+      allow update: if (googleApplicant(uid, request.resource.data) && !isMember()
+        && resource.data.status == 'pending' && request.resource.data.status == 'pending'
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['displayName','updatedAt'])
+        && request.resource.data.updatedAt == request.time)
+        || (isAdmin() && resource.data.status == 'pending'
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status','reviewedAt','reviewedBy'])
+          && request.resource.data.status in ['approved','rejected']
+          && request.resource.data.reviewedAt == request.time && request.resource.data.reviewedBy == request.auth.uid
+          && (request.resource.data.status == 'rejected' || (
+            !exists(/databases/$(database)/documents/authorizedUsers/$(resource.data.email))
+            && getAfter(/databases/$(database)/documents/authorizedUsers/$(resource.data.email)).data == {'active': true, 'role': 'member', 'displayName': resource.data.displayName})));
+      allow delete: if false;
     }
 
     match /devices/{deviceId} {

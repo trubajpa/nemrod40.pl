@@ -10,6 +10,7 @@ import { doc, getDoc } from 'firebase/firestore'
 import { auth, db } from '../lib/firebase'
 import { AuthContext, type MemberProfile } from './AuthContext'
 import { isAuthorizedMemberProfile, normalizeAuthorizedUserEmail } from './memberAuthorization'
+import { submitAccessRequest } from './accessRequests'
 import { logAuthError } from './authLogger'
 
 const NO_ACCESS_MESSAGE = 'To konto nie ma dostępu do strefy członkowskiej. Skontaktuj się z administratorem Koła.'
@@ -50,8 +51,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const snapshot = await getDoc(doc(db, 'authorizedUsers', email))
         const data = snapshot.exists() ? (snapshot.data() as MemberProfile) : null
         if (!isAuthorizedMemberProfile(data)) {
-          setAccessError(NO_ACCESS_MESSAGE)
-          await signOut(auth).catch(() => undefined)
+          const token = await firebaseUser.getIdTokenResult()
+          if (token.signInProvider === 'google.com') {
+            const status = await submitAccessRequest(firebaseUser)
+            if (checkId === currentCheck) {
+              setUser(firebaseUser)
+              setAccessError(status === 'rejected' ? 'Wniosek o dostęp został odrzucony.' : 'Oczekujesz na zatwierdzenie')
+            }
+          } else {
+            setAccessError(NO_ACCESS_MESSAGE)
+            await signOut(auth).catch(() => undefined)
+          }
           return
         }
         if (checkId === currentCheck) {
@@ -78,7 +88,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     loading,
     accessError,
     clearAccessError: () => setAccessError(null),
-    logout: () => signOut(auth),
+    logout: () => { setAccessError(null); return signOut(auth) },
   }), [user, profile, loading, accessError])
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

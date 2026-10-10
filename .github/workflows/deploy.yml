@@ -47,7 +47,7 @@ jobs:
           java-version: '21'
 
       - name: Verify forum permissions on local emulator
-        run: npx firebase emulators:exec --project demo-nemrod40 --only firestore "npx vitest run --config vitest.firestore.config.ts tests/firestore-rules/forum.integration.test.ts"
+        run: npx firebase emulators:exec --project demo-nemrod40 --only firestore "npx vitest run --config vitest.firestore.config.ts tests/firestore-rules/forum.integration.test.ts tests/firestore-rules/accessRequests.integration.test.ts"
 
       - name: Build
         run: npm run build

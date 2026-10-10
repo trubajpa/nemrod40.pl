@@ -66,18 +66,16 @@ service cloud.firestore {
 
     match /authorizedUsers/{email} {
       allow get: if isAdmin() || (hasEmail() && request.auth.token.email.lower() == email);
-      allow create: if isAdmin() && request.resource.data.keys().hasAll(['active','role','displayName'])
-        && request.resource.data.keys().hasOnly(['active','role','displayName'])
-        && request.resource.data.active == true && request.resource.data.role == 'member'
-        && request.resource.data.displayName is string && request.resource.data.displayName.size() > 0
-        && email == email.lower();
-      allow update, delete, list: if false;
+      // All privilege changes go through the Admin SDK backend.
+      allow write, list: if false;
     }
+    match /authorizationAudit/{id} { allow read: if isAdmin(); allow write: if false; }
+    match /authorizationControl/{id} { allow read, write: if false; }
 
-    function googleApplicant(uid, data) {
+    function ownApplicant(uid, data) {
       return hasEmail() && request.auth.uid == uid
-        && request.auth.token.email_verified == true
-        && request.auth.token.firebase.sign_in_provider == 'google.com'
+        && request.auth.token.firebase.sign_in_provider in ['google.com', 'password']
+        && (request.auth.token.firebase.sign_in_provider != 'google.com' || request.auth.token.email_verified == true)
         && data.uid == uid && data.email == request.auth.token.email.lower()
         && data.displayName == request.auth.token.get('name', '')
         && data.displayName is string && data.displayName.size() <= 200;
@@ -89,21 +87,19 @@ service cloud.firestore {
     match /accessRequests/{uid} {
       allow get: if isAdmin() || (hasEmail() && request.auth.uid == uid);
       allow list: if isAdmin();
-      allow create: if googleApplicant(uid, request.resource.data) && !isMember()
+      allow create: if ownApplicant(uid, request.resource.data) && !isMember()
         && requestFields(request.resource.data) && request.resource.data.status == 'pending'
         && request.resource.data.requestedAt == request.time && request.resource.data.updatedAt == request.time
         && request.resource.data.reviewedAt == null && request.resource.data.reviewedBy == null;
-      allow update: if (googleApplicant(uid, request.resource.data) && !isMember()
-        && resource.data.status == 'pending' && request.resource.data.status == 'pending'
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['displayName','updatedAt'])
-        && request.resource.data.updatedAt == request.time)
-        || (isAdmin() && resource.data.status == 'pending'
-          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status','reviewedAt','reviewedBy'])
-          && request.resource.data.status in ['approved','rejected']
-          && request.resource.data.reviewedAt == request.time && request.resource.data.reviewedBy == request.auth.uid
-          && (request.resource.data.status == 'rejected' || (
-            !exists(/databases/$(database)/documents/authorizedUsers/$(resource.data.email))
-            && getAfter(/databases/$(database)/documents/authorizedUsers/$(resource.data.email)).data == {'active': true, 'role': 'member', 'displayName': resource.data.displayName})));
+      allow update: if ownApplicant(uid, request.resource.data) && !isMember()
+        && requestFields(request.resource.data)
+        && ((resource.data.status == 'pending' && request.resource.data.status == 'pending'
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['displayName','updatedAt'])
+          && request.resource.data.updatedAt == request.time)
+        || (resource.data.status in ['approved','revoked'] && request.resource.data.status == 'pending'
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['displayName','requestedAt','updatedAt','status','reviewedAt','reviewedBy'])
+          && request.resource.data.requestedAt == request.time && request.resource.data.updatedAt == request.time
+          && request.resource.data.reviewedAt == null && request.resource.data.reviewedBy == null));
       allow delete: if false;
     }
 

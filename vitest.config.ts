@@ -6,7 +6,7 @@ export default defineConfig({
   test: {
     environment: 'jsdom',
     setupFiles: ['./src/test/setup.ts', './src/test/offlineFirebase.ts'],
-    exclude: ['tests/firestore-rules/**', 'node_modules/**', '_import-local/**'],
+    exclude: ['functions/**', 'tests/firestore-rules/**', 'node_modules/**', '_import-local/**'],
     clearMocks: true,
   },
 })

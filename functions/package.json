@@ -1,0 +1,10 @@
+{
+  "name": "nemrod40-user-management",
+  "private": true,
+  "type": "module",
+  "main": "index.mjs",
+  "engines": { "node": "22" },
+  "scripts": { "lint": "eslint --config eslint.config.mjs ." },
+  "dependencies": { "firebase-admin": "^13.0.0", "firebase-functions": "^7.0.0" },
+  "devDependencies": { "eslint": "^10.9.0", "@eslint/js": "^10.0.1", "globals": "^17.11.0" }
+}

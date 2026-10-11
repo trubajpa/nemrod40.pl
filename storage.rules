@@ -7,6 +7,16 @@ service firebase.storage {
         && firestore.get(/databases/(default)/documents/authorizedUsers/$(request.auth.token.email)).data.active == true;
     }
     function admin() { return member() && firestore.get(/databases/(default)/documents/authorizedUsers/$(request.auth.token.email)).data.role == 'admin'; }
+    function post(id) { return firestore.get(/databases/(default)/documents/announcements/$(id)).data; }
+    function published(id) { return post(id).get('ready', false) == true && post(id).get('publicStatus', 'private') == 'approved' && post(id).placements.hasAny(['news','activity']); }
+    match /publications/{id}/{file} {
+      allow get: if member() || (published(id) && ('publications/' + id + '/' + file) in post(id).photos);
+      allow list: if false;
+      allow create: if resource == null && member() && post(id).authorUid == request.auth.uid && post(id).ready == false
+        && file.matches('[A-Za-z0-9_.-]+') && request.resource.size > 0 && request.resource.size <= 10 * 1024 * 1024
+        && request.resource.contentType in ['image/jpeg','image/png','image/webp'];
+      allow update, delete: if false;
+    }
     match /devices/{deviceId}/{file=**} {
       allow read: if member();
       allow create: if resource == null && admin() && firestore.exists(/databases/(default)/documents/devices/$(deviceId))

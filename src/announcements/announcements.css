@@ -10,3 +10,8 @@
 .announcement-reactions button { padding: .5rem .9rem; border: 1px solid #a9b5ab; border-radius: .5rem; background: white; font: inherit; cursor: pointer; }
 .announcement-reactions button[aria-pressed=true] { background: #e2eddf; border-color: #28552f; }
 .announcement-comment { border-left: 3px solid #dce3dc; padding: .3rem 1rem; margin: 1rem 0; }
+.publication-gallery { display: flex; flex-wrap: wrap; gap: 1rem; }
+.publication-gallery img, .announcement-card > img { max-width: 100%; max-height: 400px; object-fit: contain; }
+.publications-feed { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr)); gap: 1.5rem; }
+.announcement-card input[type=checkbox], .announcement-card input[type=radio] { width: auto; }
+.announcement-card fieldset label { display: flex; align-items: center; gap: .5rem; }

@@ -1,4 +1,5 @@
-import { getStorage, getBlob, ref, uploadBytes } from 'firebase/storage';
+import { getStorage, ref, uploadBytes } from 'firebase/storage';
+import { storagePhotoBlob } from '../lib/storagePhotos';
 import { photoStorageEnabled, photoStorageUnavailableMessage } from './photoStorage';
 export function validPhotoPath(path: string) {
     // Imported photos include an inventory directory beneath the device ID.
@@ -13,7 +14,7 @@ export async function photoUrl(path: string): Promise<string> {
     if (!photoStorageEnabled)
         throw new Error(photoStorageUnavailableMessage);
     // No public download tokens: authenticated blob reads remain subject to Storage rules.
-    return URL.createObjectURL(await getBlob(ref(getStorage(), path)));
+    return storagePhotoBlob(path);
 }
 export async function uploadDevicePhoto(id: string, file: File) {
     if (!photoStorageEnabled)

@@ -1,0 +1,11 @@
+{
+  "indexes": [{
+    "collectionGroup": "announcements", "queryScope": "COLLECTION",
+    "fields": [
+      { "fieldPath": "placements", "arrayConfig": "CONTAINS" },
+      { "fieldPath": "publicStatus", "order": "ASCENDING" },
+      { "fieldPath": "ready", "order": "ASCENDING" }
+    ]
+  }],
+  "fieldOverrides": []
+}

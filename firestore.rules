@@ -64,6 +64,46 @@ service cloud.firestore {
     }
     match /deviceRegistry/{id} { allow read: if isMember(); allow write: if false; }
 
+    function announcementAuthor(data) {
+      return data.authorUid == request.auth.uid
+        && data.authorName == member().get('displayName', '')
+        && data.createdAt == request.time;
+    }
+    function announcementExists(id) { return exists(/databases/$(database)/documents/announcements/$(id)); }
+    function validReaction(data, uid) {
+      return data.keys().hasAll(['uid','type','createdAt','updatedAt'])
+        && data.keys().hasOnly(['uid','type','createdAt','updatedAt'])
+        && uid == request.auth.uid && data.uid == uid
+        && data.type in ['heart','up','down'] && data.updatedAt == request.time;
+    }
+    match /announcements/{id} {
+      allow read: if isMember();
+      allow create: if isMember()
+        && request.resource.data.keys().hasAll(['subject','body','kind','authorUid','authorName','createdAt'])
+        && request.resource.data.keys().hasOnly(['subject','body','kind','authorUid','authorName','createdAt'])
+        && announcementAuthor(request.resource.data)
+        && request.resource.data.subject is string && request.resource.data.subject.size() > 0 && request.resource.data.subject.size() <= 160
+        && request.resource.data.body is string && request.resource.data.body.size() > 0 && request.resource.data.body.size() <= 10000
+        && request.resource.data.kind in ['impreza','spotkanie','ustalenie','czyn','inne'];
+      allow update, delete: if false;
+      match /comments/{commentId} {
+        allow read: if isMember();
+        allow create: if isMember() && announcementExists(id)
+          && request.resource.data.keys().hasAll(['body','authorUid','authorName','createdAt'])
+          && request.resource.data.keys().hasOnly(['body','authorUid','authorName','createdAt'])
+          && announcementAuthor(request.resource.data)
+          && request.resource.data.body is string && request.resource.data.body.size() > 0 && request.resource.data.body.size() <= 2000;
+        allow update, delete: if false;
+      }
+      match /reactions/{uid} {
+        allow read: if isMember();
+        allow create: if isMember() && announcementExists(id) && validReaction(request.resource.data, uid) && request.resource.data.createdAt == request.time;
+        allow update: if isMember() && announcementExists(id) && validReaction(request.resource.data, uid)
+          && request.resource.data.createdAt == resource.data.createdAt;
+        allow delete: if isMember() && uid == request.auth.uid;
+      }
+    }
+
     match /circleMembers/{id} { allow read: if isMember(); allow write: if false; }
 
     match /authorizedUsers/{email} {

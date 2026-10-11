@@ -1,0 +1,12 @@
+.announcements-shell { max-width: 960px; }
+.announcement-card { background: white; border: 1px solid #dce3dc; border-radius: .75rem; padding: 1.5rem; margin: 1.5rem 0; }
+.announcement-card form, form.announcement-card { display: grid; gap: 1rem; }
+.announcement-card label { display: grid; gap: .4rem; font-weight: 600; }
+.announcement-card input, .announcement-card select, .announcement-card textarea { width: 100%; border: 1px solid #a9b5ab; border-radius: .4rem; padding: .7rem; font: inherit; background: white; }
+.announcement-card textarea { min-height: 100px; resize: vertical; }
+.announcement-meta { color: #526254; font-size: .9rem; }
+.announcement-body { white-space: pre-wrap; overflow-wrap: anywhere; }
+.announcement-reactions { display: flex; flex-wrap: wrap; align-items: center; gap: .75rem; }
+.announcement-reactions button { padding: .5rem .9rem; border: 1px solid #a9b5ab; border-radius: .5rem; background: white; font: inherit; cursor: pointer; }
+.announcement-reactions button[aria-pressed=true] { background: #e2eddf; border-color: #28552f; }
+.announcement-comment { border-left: 3px solid #dce3dc; padding: .3rem 1rem; margin: 1rem 0; }
